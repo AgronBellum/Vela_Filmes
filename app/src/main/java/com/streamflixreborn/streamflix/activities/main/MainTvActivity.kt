@@ -30,6 +30,7 @@ import com.streamflixreborn.streamflix.utils.ThemeManager
 import com.streamflixreborn.streamflix.utils.UserPreferences
 import com.streamflixreborn.streamflix.utils.getCurrentFragment
 import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
 
 class MainTvActivity : FragmentActivity() {
 
