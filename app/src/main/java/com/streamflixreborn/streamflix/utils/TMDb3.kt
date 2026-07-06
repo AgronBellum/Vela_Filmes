@@ -936,7 +936,7 @@ object TMDb3 {
         }
     val String.original: String
         get() = when (this.startsWith("/")) {
-            true -> "https://image.tmdb.org/t/p/original/$this"
+            true -> "https://image.tmdb.org/t/p/w780/$this"
             else -> this
         }
 

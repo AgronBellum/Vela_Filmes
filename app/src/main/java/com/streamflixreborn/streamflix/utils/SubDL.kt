@@ -42,7 +42,7 @@ object SubDL {
         ZipInputStream(zip.inputStream()).use { zipInputStream ->
             var entry = zipInputStream.nextEntry
             while (entry != null) {
-                if (!entry.isDirectory) {
+                if (!entry.isDirectory && SubtitleEncoding.isTextSubtitleFileName(entry.name)) {
                     val name = File(entry.name).name
                     val file = File("${zip.parent}${File.separator}$name")
                     
@@ -62,7 +62,7 @@ object SubDL {
 
         zip.delete()
 
-        subtitleFile?.toUri() ?: throw Exception("No subtitle found in zip")
+        subtitleFile?.let { SubtitleEncoding.normalizeFile(it).toUri() } ?: throw Exception("No subtitle found in zip")
     }
 
     suspend fun search(

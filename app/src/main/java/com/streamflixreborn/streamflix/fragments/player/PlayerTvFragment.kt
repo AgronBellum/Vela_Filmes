@@ -84,6 +84,8 @@ import com.streamflixreborn.streamflix.utils.next
 import com.streamflixreborn.streamflix.utils.plus
 import com.streamflixreborn.streamflix.utils.setMediaServerId
 import com.streamflixreborn.streamflix.utils.setMediaServers
+import com.streamflixreborn.streamflix.utils.SubtitleEncoding
+import com.streamflixreborn.streamflix.utils.SubtitleOffsetRenderersFactory
 import com.streamflixreborn.streamflix.utils.toSubtitleMimeType
 import com.streamflixreborn.streamflix.utils.viewModelsFactory
 import kotlinx.coroutines.launch
@@ -176,8 +178,9 @@ class PlayerTvFragment : Fragment() {
         )
 
         val fileName = uri.getFileName(requireContext()) ?: uri.toString()
-
+        val subtitleUri = SubtitleEncoding.normalizeToCacheFile(requireContext(), uri, fileName)
         val currentPosition = player.currentPosition
+        val currentTrackSelectionParameters = player.trackSelectionParameters
         val currentSubtitleConfigurations =
             player.currentMediaItem?.localConfiguration?.subtitleConfigurations?.map {
                 MediaItem.SubtitleConfiguration.Builder(it.uri)
@@ -193,7 +196,7 @@ class PlayerTvFragment : Fragment() {
                 .setMimeType(player.currentMediaItem?.localConfiguration?.mimeType)
                 .setSubtitleConfigurations(
                     currentSubtitleConfigurations
-                            + MediaItem.SubtitleConfiguration.Builder(uri)
+                            + MediaItem.SubtitleConfiguration.Builder(subtitleUri)
                         .setMimeType(fileName.toSubtitleMimeType())
                         .setLabel(fileName)
                         .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
@@ -202,6 +205,8 @@ class PlayerTvFragment : Fragment() {
                 .setMediaMetadata(player.mediaMetadata)
                 .build()
         )
+        player.prepare()
+        player.trackSelectionParameters = currentTrackSelectionParameters
         player.seekTo(currentPosition)
         player.play()
     }
@@ -261,7 +266,7 @@ class PlayerTvFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.CREATED).collect { state ->
                 when (state) {
-                    PlayerViewModel.State.LoadingServers -> {}
+                    PlayerViewModel.State.LoadingServers -> showServerLoading(true)
                     is PlayerViewModel.State.SuccessLoadingServers -> {
                         servers = state.servers
 
@@ -276,7 +281,7 @@ class PlayerTvFragment : Fragment() {
                                 waitingForBypass = false
                                 Toast.makeText(
                                     requireContext(),
-                                    "Unable to prepare TV bypass page.",
+                                    "Não foi possível preparar o bypass na TV.",
                                     Toast.LENGTH_SHORT
                                 ).show()
                                 return@collect
@@ -294,7 +299,7 @@ class PlayerTvFragment : Fragment() {
                                 clearBypassSession()
                                 Toast.makeText(
                                     requireContext(),
-                                    "Unable to start TV bypass. Please try again.",
+                                    "Não foi possível iniciar o bypass na TV. Tente novamente.",
                                     Toast.LENGTH_SHORT
                                 ).show()
                                 return@collect
@@ -357,10 +362,11 @@ class PlayerTvFragment : Fragment() {
                         binding.settings.setOnServerSelectedListener { server ->
                             viewModel.getVideo(state.servers.find { server.id == it.id }!!)
                         }
-                        viewModel.getVideo(state.servers.first())
+                        viewModel.getVideo(selectInitialServer(state.servers))
 
                     }
                         is PlayerViewModel.State.FailedLoadingServers -> {
+                        showServerLoading(false)
                             Toast.makeText(
                                 requireContext(),
                                 state.error.message ?: "",
@@ -370,6 +376,7 @@ class PlayerTvFragment : Fragment() {
                         }
 
                         is PlayerViewModel.State.LoadingVideo -> {
+                        showServerLoading(true)
                             player.setMediaItem(
                                 MediaItem.Builder()
                                     .setUri("".toUri())
@@ -383,6 +390,7 @@ class PlayerTvFragment : Fragment() {
                         }
 
                         is PlayerViewModel.State.SuccessLoadingVideo -> {
+                        showServerLoading(false)
                             PlayerSettingsView.Settings.ExtraBuffering.init(state.video.extraBuffering)
                             PlayerSettingsView.Settings.SoftwareDecoder.init(false)
                             displayVideo(state.video, state.server)
@@ -393,6 +401,7 @@ class PlayerTvFragment : Fragment() {
                             if (nextServer != null) {
                                 viewModel.getVideo(nextServer)
                             } else {
+                                showServerLoading(false)
                                 val providerName = UserPreferences.currentProvider?.name ?: ""
                                 val isTmdb = providerName.contains("TMDb", ignoreCase = true)
                                 val isAD = providerName.contains("AfterDark", ignoreCase = true)
@@ -447,6 +456,7 @@ class PlayerTvFragment : Fragment() {
                                 val fileName =
                                     state.uri.getFileName(requireContext()) ?: state.uri.toString()
                                 val currentPosition = player.currentPosition
+                                val currentTrackSelectionParameters = player.trackSelectionParameters
                                 val currentSubtitleConfigurations =
                                     player.currentMediaItem?.localConfiguration?.subtitleConfigurations?.map {
                                         MediaItem.SubtitleConfiguration.Builder(it.uri)
@@ -472,8 +482,10 @@ class PlayerTvFragment : Fragment() {
                                         .setMediaMetadata(player.mediaMetadata)
                                         .build()
                                 )
+                                player.prepare()
                                 UserPreferences.subtitleName =
                                     (state.subtitle.languageName ?: fileName).substringBefore(" ")
+                                player.trackSelectionParameters = currentTrackSelectionParameters
                                 player.seekTo(currentPosition)
                                 player.play()
                             }
@@ -497,6 +509,7 @@ class PlayerTvFragment : Fragment() {
                                 val fileName =
                                     state.uri.getFileName(requireContext()) ?: state.uri.toString()
                                 val currentPosition = player.currentPosition
+                                val currentTrackSelectionParameters = player.trackSelectionParameters
                                 val currentSubtitleConfigurations =
                                     player.currentMediaItem?.localConfiguration?.subtitleConfigurations?.map {
                                         MediaItem.SubtitleConfiguration.Builder(it.uri)
@@ -528,9 +541,11 @@ class PlayerTvFragment : Fragment() {
                                         .setMediaMetadata(player.mediaMetadata)
                                         .build()
                                 )
+                                player.prepare()
                                 UserPreferences.subtitleName =
                                     (state.subtitle.releaseName ?: state.subtitle.name
-                                    ?: fileName).substringBefore(" ")
+                                            ?: fileName).substringBefore(" ")
+                                player.trackSelectionParameters = currentTrackSelectionParameters
                                 player.seekTo(currentPosition)
                                 player.play()
                             }
@@ -558,7 +573,7 @@ class PlayerTvFragment : Fragment() {
                             putString("title", nextEpisode.tvShow.title)
                             putString(
                                 "subtitle",
-                                "S${nextEpisode.season.number} E${nextEpisode.number}  •  ${nextEpisode.title}"
+                                "S${nextEpisode.season.number} E${nextEpisode.number}  \u2022  ${nextEpisode.title}"
                             )
                         }
 
@@ -630,6 +645,7 @@ class PlayerTvFragment : Fragment() {
         return when (args.videoType) {
             is Video.Type.Episode -> {
                 if (!EpisodeManager.hasPreviousEpisode()) return false
+                rememberEpisodeServerForContinuation()
                 viewModel.playPreviousEpisode()
                 true
             }
@@ -669,6 +685,7 @@ class PlayerTvFragment : Fragment() {
             if (!hasNextEpisode) return@launch
             if (autoplay && !UserPreferences.autoplay) return@launch
 
+            rememberEpisodeServerForContinuation()
             viewModel.playNextEpisode()
         }
     }
@@ -727,12 +744,14 @@ class PlayerTvFragment : Fragment() {
                 })
                 .build()
 
-            displayVideo(
-                video = video,
-                server = server,
-                startPositionMs = resumePosition,
-                shouldPlay = shouldPlay,
-            )
+            lifecycleScope.launch {
+                displayVideo(
+                    video = video,
+                    server = server,
+                    startPositionMs = resumePosition,
+                    shouldPlay = shouldPlay,
+                )
+            }
         }
 
         private fun initializeVideo() {
@@ -769,17 +788,21 @@ class PlayerTvFragment : Fragment() {
                 setPadding(0, 0, 0, UserPreferences.captionMargin.dp(context))
             }
             binding.settings.setOnExtraBufferingSelectedListener {
-                displayVideo(
-                    currentVideo ?: return@setOnExtraBufferingSelectedListener,
-                    currentServer ?: return@setOnExtraBufferingSelectedListener
-                )
+                lifecycleScope.launch {
+                    displayVideo(
+                        currentVideo ?: return@launch,
+                        currentServer ?: return@launch
+                    )
+                }
             }
             binding.settings.setOnSoftwareDecoderSelectedListener { useSoftware ->
                 currentSoftwareDecoder = useSoftware
-                displayVideo(
-                    currentVideo ?: return@setOnSoftwareDecoderSelectedListener,
-                    currentServer ?: return@setOnSoftwareDecoderSelectedListener
-                )
+                lifecycleScope.launch {
+                    displayVideo(
+                        currentVideo ?: return@launch,
+                        currentServer ?: return@launch
+                    )
+                }
             }
 
             updatePlayerHeader()
@@ -808,6 +831,21 @@ class PlayerTvFragment : Fragment() {
                 UserPreferences.playerResize = newResize
                 binding.pvPlayer.controllerShowTimeoutMs = binding.pvPlayer.controllerShowTimeoutMs
                 updatePlayerScale()
+            }
+
+            binding.pvPlayer.controller.binding.btnExoSubtitles.setOnClickListener {
+                binding.pvPlayer.controllerShowTimeoutMs = binding.pvPlayer.controllerShowTimeoutMs
+                binding.settings.showSubtitles()
+            }
+
+            binding.pvPlayer.controller.binding.btnExoAudio.setOnClickListener {
+                binding.pvPlayer.controllerShowTimeoutMs = binding.pvPlayer.controllerShowTimeoutMs
+                binding.settings.showAudio()
+            }
+
+            binding.pvPlayer.controller.binding.btnExoServers.setOnClickListener {
+                binding.pvPlayer.controllerShowTimeoutMs = binding.pvPlayer.controllerShowTimeoutMs
+                binding.settings.showServers()
             }
 
             binding.pvPlayer.controller.binding.exoSettings.setOnClickListener {
@@ -846,10 +884,12 @@ class PlayerTvFragment : Fragment() {
                 reloadCurrentVideoForQualityChange()
             }
             binding.settings.setOnExtraBufferingSelectedListener {
-                displayVideo(
-                    currentVideo ?: return@setOnExtraBufferingSelectedListener,
-                    currentServer ?: return@setOnExtraBufferingSelectedListener
-                )
+                lifecycleScope.launch {
+                    displayVideo(
+                        currentVideo ?: return@launch,
+                        currentServer ?: return@launch
+                    )
+                }
             }
             binding.settings.onManualZoomClicked = {
                 binding.settings.hide()
@@ -942,7 +982,7 @@ class PlayerTvFragment : Fragment() {
             handleNavigationButton(
                 btnPrevious,
                 EpisodeManager::hasPreviousEpisode,
-                viewModel::playPreviousEpisode
+                ::playPreviousEpisodeWithCurrentServer
             )
             handleNavigationButton(
                 btnNext,
@@ -979,7 +1019,7 @@ class PlayerTvFragment : Fragment() {
             }
         }
 
-        private fun displayVideo(
+        private suspend fun displayVideo(
             video: Video,
             server: Video.Server,
             startPositionMs: Long? = null,
@@ -1012,11 +1052,16 @@ class PlayerTvFragment : Fragment() {
                     "User-Agent" to userAgent,
                 ) + (video.headers ?: emptyMap())
             )
+            val normalizedSubtitles = SubtitleEncoding.normalizeVideoSubtitles(
+                requireContext(),
+                video.subtitles,
+                mapOf("User-Agent" to userAgent) + (video.headers ?: emptyMap())
+            )
             player.setMediaItem(
                 MediaItem.Builder()
                     .setUri(video.source.toUri())
                     .setMimeType(video.type)
-                    .setSubtitleConfigurations(video.subtitles.map { subtitle ->
+                    .setSubtitleConfigurations(normalizedSubtitles.map { subtitle ->
                         MediaItem.SubtitleConfiguration.Builder(subtitle.file.toUri())
                             .setMimeType(subtitle.file.toSubtitleMimeType())
                             .setLabel(subtitle.label)
@@ -1034,7 +1079,7 @@ class PlayerTvFragment : Fragment() {
             binding.pvPlayer.controller.binding.btnExoExternalPlayer.setOnClickListener {
                 val videoTitle = when (val type = args.videoType) {
                     is Video.Type.Movie -> type.title
-                    is Video.Type.Episode -> "${type.tvShow.title} • S${type.season.number} E${type.number}"
+                    is Video.Type.Episode -> "${type.tvShow.title} \u2022 S${type.season.number} E${type.number}"
                 }
 
                 var sourceUri: Uri
@@ -1138,8 +1183,6 @@ class PlayerTvFragment : Fragment() {
                     super.onPlaybackStateChanged(playbackState)
 
                     if (playbackState == Player.STATE_READY) {
-                        binding.pvPlayer.controller.binding.exoPlayPause.nextFocusDownId = -1
-                        val videoFormat = player.videoFormat
                         updatePlayerScale()
                     }
                 }
@@ -1327,7 +1370,7 @@ class PlayerTvFragment : Fragment() {
                 is Video.Type.Movie -> args.subtitle
                 is Video.Type.Episode -> {
                     val episodeTitle = videoType.title?.takeUnless { it.isBlank() } ?: args.subtitle
-                    "S${videoType.season.number} E${videoType.number}  •  $episodeTitle"
+                    "S${videoType.season.number} E${videoType.number}  \u2022  $episodeTitle"
                 }
             }
         }
@@ -1421,27 +1464,22 @@ class PlayerTvFragment : Fragment() {
         private fun buildPlayer(extraBuffering: Boolean): ExoPlayer {
             val loadControl = DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
-                    DefaultLoadControl.DEFAULT_MIN_BUFFER_MS,
-                    if (extraBuffering) 300_000 else DefaultLoadControl.DEFAULT_MAX_BUFFER_MS,
-                    DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
-                    DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+                    if (extraBuffering) EXTRA_MIN_BUFFER_MS else NORMAL_MIN_BUFFER_MS,
+                    if (extraBuffering) EXTRA_MAX_BUFFER_MS else NORMAL_MAX_BUFFER_MS,
+                    if (extraBuffering) EXTRA_BUFFER_FOR_PLAYBACK_MS else NORMAL_BUFFER_FOR_PLAYBACK_MS,
+                    if (extraBuffering) EXTRA_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS else NORMAL_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
                 )
                 .build()
 
-            val baseBuilder = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.N_MR1 && !currentSoftwareDecoder) {
-                ExoPlayer.Builder(requireContext())
-            } else {
-                val renderersFactory = DefaultRenderersFactory(requireContext()).apply {
-                    setEnableDecoderFallback(true)
-                    if (currentSoftwareDecoder) {
-                        setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
-                    }
+            val renderersFactory = SubtitleOffsetRenderersFactory(requireContext()).apply {
+                setEnableDecoderFallback(true)
+                if (currentSoftwareDecoder) {
+                    setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
                 }
-                ExoPlayer.Builder(requireContext(), renderersFactory)
             }
 
-            return baseBuilder
-                .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+            return ExoPlayer.Builder(requireContext(), renderersFactory)
+                .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory).experimentalParseSubtitlesDuringExtraction(false))
                 .setLoadControl(loadControl)
                 .build()
         }
@@ -1466,14 +1504,7 @@ class PlayerTvFragment : Fragment() {
                             .build(),
                         true,
                     )
-
-                    val lang = UserPreferences.currentProvider?.language?.substringBefore("-")
-                    if (lang == "es") {
-                        player.trackSelectionParameters =
-                            player.trackSelectionParameters.buildUpon()
-                                .setPreferredAudioLanguage("spa")
-                                .build()
-                    }
+                    applyPreferredLanguageDefaults(player)
 
                     mediaSession = MediaSession.Builder(requireContext(), player)
                         .build()
@@ -1486,6 +1517,92 @@ class PlayerTvFragment : Fragment() {
                 viewModel.getSubtitles(args.videoType)
             }
         }
+
+        
+    private fun playPreviousEpisodeWithCurrentServer() {
+        rememberEpisodeServerForContinuation()
+        viewModel.playPreviousEpisode()
+    }
+
+    private fun rememberEpisodeServerForContinuation() {
+        val episode = currentVideoTypeForUi() as? Video.Type.Episode ?: return
+        val server = currentServer ?: return
+        preferredEpisodeServer = EpisodeServerSelection(
+            tvShowId = episode.tvShow.id,
+            serverId = server.id,
+            serverNameKey = server.name.serverSelectionKey(),
+        )
+    }
+
+    private fun selectInitialServer(servers: List<Video.Server>): Video.Server {
+        val episode = args.videoType as? Video.Type.Episode
+        val preferred = preferredEpisodeServer
+        if (episode == null) {
+            preferredEpisodeServer = null
+        } else if (preferred?.tvShowId == episode.tvShow.id) {
+            servers.firstOrNull { it.id == preferred.serverId }?.let { return it }
+            servers.firstOrNull { it.name.serverSelectionKey() == preferred.serverNameKey }?.let { return it }
+        } else {
+            preferredEpisodeServer = null
+        }
+
+        if (UserPreferences.preferDubbedPlayback) {
+
+
+            servers.firstOrNull(::isPlayerFlixServer)?.let { return it }
+
+
+        }
+
+
+
+        return servers.firstOrNull { server ->
+
+
+            englishServerRegex.containsMatchIn(listOf(server.name, server.id).joinToString(" "))
+
+
+        } ?: servers.first()
+    }
+
+    private fun String.serverSelectionKey(): String = lowercase(Locale.ROOT)
+        .replace(Regex("[^a-z0-9]+"), " ")
+        .trim()
+
+    private fun applyPreferredLanguageDefaults(player: ExoPlayer) {
+        val builder = player.trackSelectionParameters.buildUpon()
+        if (UserPreferences.preferDubbedPlayback) {
+            builder.setPreferredAudioLanguages("por", "pt", "pt-BR", "pob", "eng", "en", "en-US", "en-GB", "ita", "it")
+        } else {
+            builder.setPreferredAudioLanguage(UserPreferences.audioLanguage ?: "eng")
+        }
+        player.trackSelectionParameters = builder.build()
+    }
+
+    private fun showServerLoading(show: Boolean) {
+        binding.llServerLoading.isVisible = show
+    }
+
+    private data class EpisodeServerSelection(
+        val tvShowId: String,
+        val serverId: String,
+        val serverNameKey: String,
+    )
+
+    companion object {
+        private const val NORMAL_MIN_BUFFER_MS = 45_000
+        private const val NORMAL_MAX_BUFFER_MS = 180_000
+        private const val NORMAL_BUFFER_FOR_PLAYBACK_MS = 8_000
+        private const val NORMAL_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 15_000
+        private const val EXTRA_MIN_BUFFER_MS = 60_000
+        private const val EXTRA_MAX_BUFFER_MS = 300_000
+        private const val EXTRA_BUFFER_FOR_PLAYBACK_MS = 30_000
+        private const val EXTRA_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 30_000
+        private var preferredEpisodeServer: EpisodeServerSelection? = null
+        private val englishServerRegex = Regex("(^|[^a-z])(eng|en|english|ingles|ingl)([^a-z]|$)", RegexOption.IGNORE_CASE)
+        private fun isPlayerFlixServer(server: Video.Server): Boolean =
+            listOf(server.name, server.id, server.src).any { it.contains("playerflix", ignoreCase = true) }
+    }
 
         private fun releasePlayer() {
             stopProgressHandler()
@@ -1670,6 +1787,7 @@ class PlayerTvFragment : Fragment() {
                         .build(),
                     true,
                 )
+                applyPreferredLanguageDefaults(player)
             }
 
         // Bind new player to UI view
@@ -1687,7 +1805,7 @@ class PlayerTvFragment : Fragment() {
         lifecycleScope.launch {
             delay(300)
 
-            // 🔴 restore episode context BEFORE reload
+            // ðŸ”´ restore episode context BEFORE reload
             when (val type = args.videoType) {
                 is Video.Type.Episode -> {
                     EpisodeManager.setCurrentEpisode(type)
@@ -1727,3 +1845,5 @@ class PlayerTvFragment : Fragment() {
 
 
     }
+
+

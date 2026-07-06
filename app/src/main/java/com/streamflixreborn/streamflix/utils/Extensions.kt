@@ -300,6 +300,7 @@ inline fun <T1, T2, T3, T4, T5, T6, R> combine(
 fun String.toSubtitleMimeType(): String {
     return when {
         endsWith("vtt", true) -> MimeTypes.TEXT_VTT
+        endsWith("ass", true) || endsWith("ssa", true) -> MimeTypes.TEXT_SSA
         endsWith("srt", true) -> MimeTypes.APPLICATION_SUBRIP
         endsWith("xml", true) || endsWith("ttml", true) -> MimeTypes.APPLICATION_TTML
         else -> MimeTypes.APPLICATION_SUBRIP

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="42dp"
+    android:background="@drawable/bg_live_tv_category"
+    android:clickable="true"
+    android:elevation="1dp"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:gravity="center_vertical"
+    android:minWidth="144dp"
+    android:orientation="horizontal"
+    android:paddingStart="13dp"
+    android:paddingEnd="10dp">
+
+    <TextView
+        android:id="@+id/tv_category_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="#F4F0FF"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        tools:text="Filmes e Series" />
+
+    <TextView
+        android:id="@+id/tv_category_count"
+        android:layout_width="wrap_content"
+        android:layout_height="20dp"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/bg_live_badge"
+        android:gravity="center"
+        android:minWidth="28dp"
+        android:paddingStart="7dp"
+        android:paddingEnd="7dp"
+        android:textColor="#DCD6FF"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        tools:text="32" />
+</LinearLayout>

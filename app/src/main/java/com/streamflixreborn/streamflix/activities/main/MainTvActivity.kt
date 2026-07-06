@@ -30,7 +30,6 @@ import com.streamflixreborn.streamflix.utils.ThemeManager
 import com.streamflixreborn.streamflix.utils.UserPreferences
 import com.streamflixreborn.streamflix.utils.getCurrentFragment
 import kotlinx.coroutines.launch
-import androidx.lifecycle.lifecycleScope
 
 class MainTvActivity : FragmentActivity() {
 
@@ -122,7 +121,7 @@ class MainTvActivity : FragmentActivity() {
             }
 
             when (destination.id) {
-                R.id.search, R.id.home, R.id.movies, R.id.tv_shows, R.id.settings -> {
+                R.id.search, R.id.home, R.id.movies, R.id.tv_shows, R.id.live_tv, R.id.settings -> {
                     binding.navMain.visibility = View.VISIBLE
                     updateNavigationVisibility()
                 }
@@ -159,7 +158,7 @@ class MainTvActivity : FragmentActivity() {
             override fun handleOnBackPressed() {
                 when (navController.currentDestination?.id) {
                     R.id.home -> if (binding.navMain.hasFocus()) finish() else binding.navMain.requestFocus()
-                    R.id.settings, R.id.search, R.id.movies, R.id.tv_shows -> {
+                    R.id.settings, R.id.search, R.id.movies, R.id.tv_shows, R.id.live_tv -> {
                         navigateToProviderHome(navController)
                         binding.navMain.requestFocus()
                     }

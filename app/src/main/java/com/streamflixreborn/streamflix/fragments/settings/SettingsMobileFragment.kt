@@ -145,7 +145,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         renderCurrentScreen()
 
         val allProvidersToBackup = Provider.providers.keys.toMutableList().apply {
-            listOf("it", "en", "es", "de", "fr").forEach { lang ->
+            listOf("pt-BR", "it", "en", "es", "de", "fr").forEach { lang ->
                 add(TmdbProvider(lang))
             }
         }
@@ -413,7 +413,15 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
         }
 
-        findPreference<EditTextPreference>("p_settings_autoplay_buffer")?.apply {
+        
+        findPreference<SwitchPreference>("PREFER_DUBBED_PLAYBACK")?.apply {
+            isChecked = UserPreferences.preferDubbedPlayback
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.preferDubbedPlayback = newValue as Boolean
+                true
+            }
+        }
+findPreference<EditTextPreference>("p_settings_autoplay_buffer")?.apply {
             summaryProvider = Preference.SummaryProvider<EditTextPreference> { pref ->
                 val value = pref.text?.toLongOrNull() ?: 3L
                 "$value s"
@@ -1360,6 +1368,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
 
         findPreference<SwitchPreference>("AUTOPLAY")?.isChecked = UserPreferences.autoplay
         findPreference<SwitchPreference>("FORCE_EXTRA_BUFFERING")?.isChecked = UserPreferences.forceExtraBuffering
+        findPreference<SwitchPreference>("PREFER_DUBBED_PLAYBACK")?.isChecked = UserPreferences.preferDubbedPlayback
         findPreference<SwitchPreference>("PLAYER_GESTURES")?.isChecked = UserPreferences.playerGestures
         findPreference<SwitchPreference>("KEEP_SCREEN_ON_WHEN_PAUSED")?.isChecked = UserPreferences.keepScreenOnWhenPaused
         findPreference<SwitchPreferenceCompat>("ENABLE_TMDB")?.isChecked = UserPreferences.enableTmdb

@@ -221,6 +221,38 @@
             app:popUpToInclusive="true" />
     </fragment>
     <fragment
+        android:id="@+id/live_tv"
+        android:name="com.streamflixreborn.streamflix.fragments.live_tv.LiveTvTvFragment"
+        android:label="fragment_live_tv_tv"
+        tools:layout="@layout/fragment_live_tv_tv" />
+
+    <fragment
+        android:id="@+id/live_tv_player"
+        android:name="com.streamflixreborn.streamflix.fragments.live_tv.LiveTvPlayerTvFragment"
+        android:label="fragment_live_tv_player_tv"
+        tools:layout="@layout/fragment_live_tv_player_tv">
+        <argument
+            android:name="channelId"
+            app:argType="string" />
+        <argument
+            android:name="channelName"
+            app:argType="string" />
+        <argument
+            android:name="streamUrl"
+            app:argType="string" />
+        <argument
+            android:name="headers"
+            app:argType="string" />
+        <argument
+            android:name="nowTitle"
+            app:argType="string"
+            app:nullable="true" />
+        <argument
+            android:name="nextTitle"
+            app:argType="string"
+            app:nullable="true" />
+    </fragment>
+    <fragment
         android:id="@+id/settings"
         android:name="com.streamflixreborn.streamflix.fragments.settings.SettingsTvFragment"
         android:label="fragment_settings_tv" />

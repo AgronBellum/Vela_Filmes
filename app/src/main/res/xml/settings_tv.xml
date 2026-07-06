@@ -97,6 +97,12 @@
                 android:title="@string/settings_force_extra_buffer_title"
                 android:summary="@string/settings_force_extra_buffer_summary"
                 android:defaultValue="false" />
+
+            <SwitchPreference
+                android:key="PREFER_DUBBED_PLAYBACK"
+                android:title="@string/settings_prefer_dubbed_playback_title"
+                android:summary="@string/settings_prefer_dubbed_playback_summary"
+                android:defaultValue="false" />
         </PreferenceCategory>
 
         <PreferenceCategory android:title="@string/player_settings">

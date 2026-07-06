@@ -16,3 +16,4 @@ rootProject.name = "Vela Filmes"
 include ':app'
 include ':retrofit-jsoup-converter'
 include ':navigation'
+include ':megaflix-tv'

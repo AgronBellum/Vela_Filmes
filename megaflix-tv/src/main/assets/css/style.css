@@ -1,0 +1,137 @@
+* {
+    border: 0;
+    padding: 0;
+}
+
+body {
+    background: #111113;
+}
+
+#app {
+    display: none;
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    top: 0;
+    left: 0;
+    font-family: Roboto;
+    color: #fff;
+    overflow: auto;
+}
+
+#loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: #111113;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 99999;
+    font-family: Roboto;
+}
+
+#loader .icon {
+    width: 140px;
+    height: 140px;
+    background-image: url(../img/icon.png);
+    background-size: 90px;
+    background-position: center;
+    background-repeat: no-repeat;
+    margin-top: -120px;
+}
+
+#loader img {
+    width: 60px;
+}
+
+#loader.off {
+    animation: test 0.8s linear forwards;
+}
+
+#loader .version {
+    position: fixed;
+    color: #818181;
+    right: 10px;
+    bottom: 10px;
+    font-size: 13px;
+    font-family: sans-serif;
+
+}
+
+@keyframes test {
+    from {
+        opacity: 1;
+        display: flex;
+    }
+
+    to {
+        opacity: 0;
+        display: none;
+    }
+}
+
+#loader .error {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 30px;
+}
+
+#loader .error .text {
+    font-size: 17px;
+    color: #e9e9e9;
+}
+
+#loader .error .button {
+    margin-top: 20px;
+    background-color: #FD5D5D;
+    width: 150px;
+    height: 35px;
+    border-radius: 4px;
+    line-height: 35px;
+    text-align: center;
+    color: #f3f3f3;
+    font-size: 14px;
+}
+
+
+#update {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 99999;
+    font-family: Roboto;
+}
+
+#update .icon {
+    width: 140px;
+    height: 140px;
+    background-image: url(../img/icon.png);
+    background-size: 90px;
+    background-position: center;
+    background-repeat: no-repeat;
+    margin-top: -120px;
+}
+
+#update img {
+    width: 60px;
+}
+
+
+
+@font-face {
+    font-family: 'Roboto';
+    src: url('Roboto-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}

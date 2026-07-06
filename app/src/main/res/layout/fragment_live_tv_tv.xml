@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_live_tv_screen"
+    android:paddingStart="42dp"
+    android:paddingTop="30dp"
+    android:paddingEnd="32dp"
+    android:paddingBottom="26dp"
+    tools:context=".fragments.live_tv.LiveTvTvFragment">
+
+    <TextView
+        android:id="@+id/tv_live_tv_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="TV"
+        android:textColor="#FFFFFF"
+        android:textSize="30sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tv_live_tv_subtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Programacao em horario de Brasilia"
+        android:textColor="#BFB9DD"
+        android:textSize="13sp"
+        app:layout_constraintStart_toStartOf="@id/tv_live_tv_title"
+        app:layout_constraintTop_toBottomOf="@id/tv_live_tv_title" />
+
+    <androidx.leanback.widget.HorizontalGridView
+        android:id="@+id/hgv_live_tv_categories"
+        android:layout_width="0dp"
+        android:layout_height="58dp"
+        android:layout_marginTop="18dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        app:layout_constraintEnd_toStartOf="@id/live_tv_detail_panel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_live_tv_subtitle"
+        app:numberOfRows="1"
+        tools:listitem="@layout/item_live_tv_category" />
+
+    <TextView
+        android:id="@+id/tv_live_tv_category_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:textColor="#F1EEFF"
+        android:textSize="19sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@id/live_tv_detail_panel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/hgv_live_tv_categories"
+        tools:text="Filmes e Series" />
+
+    <TextView
+        android:id="@+id/tv_live_tv_category_subtitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:textColor="#AFA3D8"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toStartOf="@id/live_tv_detail_panel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_live_tv_category_title"
+        tools:text="32 canais" />
+
+    <androidx.leanback.widget.VerticalGridView
+        android:id="@+id/vgv_live_tv_channels"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="12dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        app:focusOutEnd="true"
+        app:focusOutFront="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/live_tv_detail_panel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_live_tv_category_subtitle"
+        app:numberOfColumns="3"
+        tools:listitem="@layout/item_live_tv_channel" />
+
+    <LinearLayout
+        android:id="@+id/live_tv_detail_panel"
+        android:layout_width="306dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="24dp"
+        android:background="@drawable/bg_live_tv_panel"
+        android:orientation="vertical"
+        android:padding="20dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:id="@+id/tv_live_tv_selected_category"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#AFA3D8"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            tools:text="Documentarios" />
+
+        <TextView
+            android:id="@+id/tv_live_tv_selected_channel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="#FFFFFF"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            tools:text="Animal Planet" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="AGORA"
+            android:textColor="#F1EEFF"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_live_tv_now_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:maxLines="3"
+            android:textColor="#F1EEFF"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            tools:text="Quem da Mais?" />
+
+        <TextView
+            android:id="@+id/tv_live_tv_now_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textColor="#BFB9DD"
+            android:textSize="12sp"
+            tools:text="17:30 - 18:20" />
+
+        <ProgressBar
+            android:id="@+id/pb_live_tv_progress"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="5dp"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="#2B2350"
+            android:max="100"
+            android:progressTint="#7C5CFF"
+            tools:progress="62" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="26dp"
+            android:text="PROXIMO"
+            android:textColor="#AFA3D8"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_live_tv_next_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:maxLines="3"
+            android:textColor="#F1EEFF"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            tools:text="Jornal da Noite" />
+
+        <TextView
+            android:id="@+id/tv_live_tv_next_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textColor="#BFB9DD"
+            android:textSize="12sp"
+            tools:text="18:20" />
+
+        <ProgressBar
+            android:id="@+id/pb_live_tv_epg"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="18dp"
+            android:indeterminate="true"
+            android:visibility="gone" />
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <Button
+            android:id="@+id/btn_live_tv_watch"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_button_tv"
+            android:text="Assistir"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/pb_live_tv_loading"
+        android:layout_width="54dp"
+        android:layout_height="48dp"
+        android:indeterminate="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tv_live_tv_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:textColor="#F1EEFF"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="@id/pb_live_tv_loading"
+        app:layout_constraintStart_toStartOf="@id/pb_live_tv_loading"
+        app:layout_constraintTop_toBottomOf="@id/pb_live_tv_loading"
+        tools:text="Carregando canais..." />
+
+    <Button
+        android:id="@+id/btn_live_tv_retry"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Tentar novamente"
+        app:layout_constraintEnd_toEndOf="@id/tv_live_tv_status"
+        app:layout_constraintStart_toStartOf="@id/tv_live_tv_status"
+        app:layout_constraintTop_toBottomOf="@id/tv_live_tv_status" />
+
+    <androidx.constraintlayout.widget.Group
+        android:id="@+id/group_live_tv_error"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:constraint_referenced_ids="btn_live_tv_retry" />
+</androidx.constraintlayout.widget.ConstraintLayout>
+

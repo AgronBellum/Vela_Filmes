@@ -31,6 +31,8 @@ import com.streamflixreborn.streamflix.utils.VoiceRecognitionHelper
 import com.streamflixreborn.streamflix.utils.dp
 import com.streamflixreborn.streamflix.utils.hideKeyboard
 import com.streamflixreborn.streamflix.utils.viewModelsFactory
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class SearchMobileFragment : Fragment() {
@@ -44,6 +46,7 @@ class SearchMobileFragment : Fragment() {
     private val viewModel by viewModelsFactory { SearchViewModel(database) }
 
     private var appAdapter = AppAdapter()
+    private var searchDebounceJob: Job? = null
 
     private lateinit var voiceHelper: VoiceRecognitionHelper
 
@@ -126,40 +129,54 @@ class SearchMobileFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         voiceHelper.stopRecognition()
+        searchDebounceJob?.cancel()
         _binding = null
+    }
+
+    private fun scheduleSearch(query: String) {
+        searchDebounceJob?.cancel()
+        searchDebounceJob = viewLifecycleOwner.lifecycleScope.launch {
+            if (query.isNotBlank()) {
+                delay(400)
+            }
+            runSearch(query)
+        }
+    }
+
+    private fun runSearch(query: String) {
+        if (binding.swGlobalSearch.isChecked && query.isNotBlank()) {
+            val currentLanguage = UserPreferences.currentProvider?.language ?: "es"
+            viewModel.searchGlobal(query, currentLanguage)
+        } else {
+            viewModel.search(query)
+        }
     }
 
     private fun initializeSearch() {
         binding.etSearch.apply {
-            // ========= LÓGICA DE BÚSQUEDA MODIFICADA =========
             setOnEditorActionListener { _, actionId, _ ->
                 if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                     val query = binding.etSearch.text.toString()
                     hideKeyboard()
-
-                    if (binding.swGlobalSearch.isChecked) {
-                        val currentLanguage = UserPreferences.currentProvider?.language ?: "es"
-                        viewModel.searchGlobal(query, currentLanguage)
-                    } else {
-                        viewModel.search(query)
-                    }
+                    searchDebounceJob?.cancel()
+                    runSearch(query)
                     return@setOnEditorActionListener true
                 }
                 return@setOnEditorActionListener false
             }
-            // =================================================
 
             addTextChangedListener(object : TextWatcher {
                 override fun afterTextChanged(s: Editable?) {
-                    if(s.isNullOrBlank()){
+                    val query = s?.toString().orEmpty()
+                    if (query.isBlank()) {
                         binding.etSearch.hint = getString(R.string.search_input_hint)
                     }
+                    scheduleSearch(query)
                 }
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             })
         }
-
         val blink = AlphaAnimation(1f, 0.3f).apply {
             duration = 500
             repeatCount = Animation.INFINITE
@@ -171,7 +188,7 @@ class SearchMobileFragment : Fragment() {
             onResult = { query ->
                 binding.btnSearchVoice.clearAnimation()
                 binding.etSearch.setText(query)
-                viewModel.search(query)
+                binding.etSearch.setSelection(binding.etSearch.text?.length ?: 0)
             },
             onError = { msg ->
                 Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
@@ -199,9 +216,11 @@ class SearchMobileFragment : Fragment() {
         binding.btnSearchClear.setOnClickListener {
             binding.etSearch.setText("")
             binding.etSearch.hint = getString(R.string.search_input_hint)
-            viewModel.search("")
         }
 
+        binding.swGlobalSearch.setOnCheckedChangeListener { _, _ ->
+            scheduleSearch(binding.etSearch.text?.toString().orEmpty())
+        }
         binding.rvSearch.apply {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY

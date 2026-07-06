@@ -4,9 +4,15 @@
 .idea
 .DS_Store
 /build
+**/build/
 /captures
 .externalNativeBuild
 .cxx
 local.properties
 *.salive
 *.log
+*.class
+/work/
+/tvbox-screen*.png
+/.codex-remote-attachments/
+/TestInstant.java

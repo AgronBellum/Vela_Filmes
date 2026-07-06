@@ -8,4 +8,6 @@
     <dimen name="genre_spacing">16dp</dimen>
 
     <dimen name="season_episodes_spacing">30dp</dimen>
+    <dimen name="live_tv_category_spacing">12dp</dimen>
+    <dimen name="live_tv_channel_spacing">12dp</dimen>
 </resources>

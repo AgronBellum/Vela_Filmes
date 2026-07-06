@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.streamflixreborn.streamflix.utils.LoggingUtils
+import com.streamflixreborn.streamflix.utils.preferBannerArtworkQuality
 import com.streamflixreborn.streamflix.utils.UserPreferences
 import com.streamflixreborn.streamflix.utils.ProviderChangeNotifier
 
@@ -155,7 +156,7 @@ class HomeTvFragment : Fragment() {
         if (swiperHasFocus == null && !swiperHasLastFocus) return
 
         Glide.with(requireContext())
-            .load(uri)
+            .load(uri.preferBannerArtworkQuality())
             .transition(DrawableTransitionOptions.withCrossFade())
             .into(binding.ivHomeBackground)
         swiperHasLastFocus = swiperHasFocus ?: swiperHasLastFocus
@@ -164,7 +165,7 @@ class HomeTvFragment : Fragment() {
     fun pinBackground(uri: String?) {
         isBackgroundPinned = true
         Glide.with(requireContext())
-            .load(uri)
+            .load(uri.preferBannerArtworkQuality())
             .transition(DrawableTransitionOptions.withCrossFade())
             .into(binding.ivHomeBackground)
     }

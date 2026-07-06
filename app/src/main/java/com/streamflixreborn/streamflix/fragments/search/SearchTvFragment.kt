@@ -31,6 +31,8 @@ import com.streamflixreborn.streamflix.utils.UserPreferences
 import com.streamflixreborn.streamflix.utils.VoiceRecognitionHelper
 import com.streamflixreborn.streamflix.utils.hideKeyboard
 import com.streamflixreborn.streamflix.utils.viewModelsFactory
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.navigation.fragment.findNavController
 import com.streamflixreborn.streamflix.providers.Provider
@@ -45,6 +47,7 @@ class SearchTvFragment : Fragment() {
     private val viewModel by viewModelsFactory { SearchViewModel(database) }
     private var isGlobalSearchChecked: Boolean = false
     private var currentGridColumns: Int = 1
+    private var searchDebounceJob: Job? = null
 
     private val appAdapter by lazy {
         AppAdapter().apply {
@@ -155,19 +158,34 @@ class SearchTvFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         voiceHelper.stopRecognition()
+        searchDebounceJob?.cancel()
         _binding = null
     }
 
-    private fun submitSearch(): Boolean {
-        val query = binding.etSearch.text?.toString().orEmpty()
-        hideKeyboard()
+    private fun scheduleSearch(query: String) {
+        searchDebounceJob?.cancel()
+        searchDebounceJob = viewLifecycleOwner.lifecycleScope.launch {
+            if (query.isNotBlank()) {
+                delay(400)
+            }
+            runSearch(query)
+        }
+    }
 
-        if (isGlobalSearchChecked) {
+    private fun runSearch(query: String) {
+        if (isGlobalSearchChecked && query.isNotBlank()) {
             val currentLanguage = UserPreferences.currentProvider?.language ?: "es"
             viewModel.searchGlobal(query, currentLanguage)
         } else {
             viewModel.search(query)
         }
+    }
+
+    private fun submitSearch(): Boolean {
+        val query = binding.etSearch.text?.toString().orEmpty()
+        hideKeyboard()
+        searchDebounceJob?.cancel()
+        runSearch(query)
         return true
     }
 
@@ -180,6 +198,7 @@ class SearchTvFragment : Fragment() {
             binding.ivGlobalSearchSwitch.setImageResource(
                 if (isGlobalSearchChecked) R.drawable.ic_switch_on else R.drawable.ic_switch_off
             )
+            scheduleSearch(binding.etSearch.text?.toString().orEmpty())
         }
 
         binding.etSearch.apply {
@@ -223,15 +242,16 @@ class SearchTvFragment : Fragment() {
 
             addTextChangedListener(object : TextWatcher {
                 override fun afterTextChanged(s: Editable?) {
-                    if (s.isNullOrBlank()) {
+                    val query = s?.toString().orEmpty()
+                    if (query.isBlank()) {
                         binding.etSearch.hint = getString(R.string.search_input_hint)
                     }
+                    scheduleSearch(query)
                 }
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             })
         }
-
         val blink = AlphaAnimation(1f, 0.3f).apply {
             duration = 500
             repeatCount = Animation.INFINITE
@@ -243,7 +263,7 @@ class SearchTvFragment : Fragment() {
             onResult = { query ->
                 binding.btnSearchVoice.clearAnimation()
                 binding.etSearch.setText(query)
-                viewModel.search(query)
+                binding.etSearch.setSelection(binding.etSearch.text?.length ?: 0)
             },
             onError = { msg ->
                 Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
@@ -275,7 +295,6 @@ class SearchTvFragment : Fragment() {
         binding.btnSearchClear.setOnClickListener {
             binding.etSearch.setText("")
             binding.etSearch.hint = getString(R.string.search_input_hint)
-            viewModel.search("")
         }
 
         binding.vgvSearch.apply {

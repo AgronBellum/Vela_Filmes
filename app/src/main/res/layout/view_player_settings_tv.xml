@@ -3,12 +3,18 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#66000000">
 
     <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="350dp"
+        android:id="@+id/settings_panel"
+        android:layout_width="420dp"
         android:layout_height="0dp"
-        android:background="#202020"
+        android:background="@drawable/bg_stremio_panel"
+        android:paddingStart="22dp"
+        android:paddingTop="24dp"
+        android:paddingEnd="22dp"
+        android:paddingBottom="20dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent">
@@ -17,25 +23,93 @@
             android:id="@+id/tv_settings_header"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="24dp"
-            android:layout_marginTop="32dp"
-            android:layout_marginEnd="24dp"
-            android:textColor="#FFFFFF"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#F2F0FF"
             android:textSize="20sp"
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            tools:text="Settings" />
+            tools:text="Legendas" />
+
+        <LinearLayout
+            android:id="@+id/subtitle_sync_controls"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:orientation="vertical"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_settings_header"
+            tools:visibility="visible">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Delay"
+                android:textColor="#A9A2C8"
+                android:textSize="16sp"
+                tools:ignore="HardcodedText" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_stremio_delay_control"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/btn_subtitle_delay_minus"
+                    android:layout_width="56dp"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_stremio_control_button"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:gravity="center"
+                    android:text="-"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="32sp"
+                    tools:ignore="HardcodedText" />
+
+                <TextView
+                    android:id="@+id/tv_subtitle_delay_value"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:gravity="center"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    tools:text="0.00s" />
+
+                <TextView
+                    android:id="@+id/btn_subtitle_delay_plus"
+                    android:layout_width="56dp"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_stremio_control_button"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:gravity="center"
+                    android:text="+"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="30sp"
+                    tools:ignore="HardcodedText" />
+            </LinearLayout>
+        </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_settings"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="20dp"
             android:clipToPadding="false"
             android:orientation="vertical"
-            android:paddingBottom="32dp"
+            android:paddingBottom="14dp"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"

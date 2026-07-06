@@ -10,8 +10,10 @@ import com.streamflixreborn.streamflix.models.TvShow
 import com.streamflixreborn.streamflix.providers.Provider
 import com.streamflixreborn.streamflix.utils.ParentalControlUtils
 import com.streamflixreborn.streamflix.utils.UserPreferences
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -105,22 +107,28 @@ class SearchViewModel(database: AppDatabase) : ViewModel() {
 
     var query = ""
     private var page = 1
+    private var searchJob: Job? = null
 
     init {
         search(query)
     }
 
-    fun search(query: String) = viewModelScope.launch(Dispatchers.IO) {
-        _state.emit(State.Searching)
+    fun search(query: String) {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch(Dispatchers.IO) {
+            _state.emit(State.Searching)
 
-        try {
-            val results = ParentalControlUtils.filterItems(UserPreferences.currentProvider!!.search(query))
-            this@SearchViewModel.query = query
-            page = 1
-            _state.emit(State.SuccessSearching(results, results.isNotEmpty()))
-        } catch (e: Exception) {
-            Log.e("SearchViewModel", "search: ", e)
-            _state.emit(State.FailedSearching(e))
+            try {
+                val results = ParentalControlUtils.filterItems(UserPreferences.currentProvider!!.search(query))
+                this@SearchViewModel.query = query
+                page = 1
+                _state.emit(State.SuccessSearching(results, results.isNotEmpty()))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("SearchViewModel", "search: ", e)
+                _state.emit(State.FailedSearching(e))
+            }
         }
     }
 
@@ -152,52 +160,57 @@ class SearchViewModel(database: AppDatabase) : ViewModel() {
     }
 
     // FUNCIÓN DE BÚSQUEDA GLOBAL AÑADIDA
-    fun searchGlobal(query: String, currentLanguage: String) = viewModelScope.launch(Dispatchers.IO) {
-        _state.emit(State.GlobalSearching)
+    fun searchGlobal(query: String, currentLanguage: String) {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch(Dispatchers.IO) {
+            _state.emit(State.GlobalSearching)
 
-        val targetProviders = Provider.providers.keys
-            .filter { it.language == currentLanguage }
-            .toList()
+            val targetProviders = Provider.providers.keys
+                .filter { it.language == currentLanguage }
+                .toList()
 
-        if (targetProviders.isEmpty()) {
-            _state.emit(State.SuccessGlobalSearching(emptyList()))
-            return@launch
-        }
-
-        val initialResults = targetProviders.map { provider ->
-            ProviderResult(provider, ProviderResult.State.Loading)
-        }
-        _state.emit(State.SuccessGlobalSearching(initialResults))
-
-        val mutableResults = initialResults.toMutableList()
-
-        val stateComparator = compareBy<ProviderResult> { providerResult ->
-            when (val state = providerResult.state) {
-                is ProviderResult.State.Success -> if (state.results.isNotEmpty()) 1 else 3
-                is ProviderResult.State.Loading -> 2
-                is ProviderResult.State.Error -> 4
+            if (targetProviders.isEmpty()) {
+                _state.emit(State.SuccessGlobalSearching(emptyList()))
+                return@launch
             }
-        }
 
-        targetProviders.forEachIndexed { index, provider ->
-            launch {
-                try {
-                    val results = ParentalControlUtils.filterItems(provider.search(query).onEach { item ->
-                        // ========= ¡AQUÍ ESTÁ LA MAGIA! =========
-                        // Le ponemos el sello a cada resultado
-                        when (item) {
-                            is Movie -> item.providerName = provider.name
-                            is TvShow -> item.providerName = provider.name
-                        }
-                        // =======================================
-                    })
-                    mutableResults[index] = ProviderResult(provider, ProviderResult.State.Success(results))
-                } catch (e: Exception) {
-                    Log.e("SearchViewModel", "searchGlobal for ${provider.name}: ", e)
-                    mutableResults[index] = ProviderResult(provider, ProviderResult.State.Error(e))
+            val initialResults = targetProviders.map { provider ->
+                ProviderResult(provider, ProviderResult.State.Loading)
+            }
+            _state.emit(State.SuccessGlobalSearching(initialResults))
+
+            val mutableResults = initialResults.toMutableList()
+
+            val stateComparator = compareBy<ProviderResult> { providerResult ->
+                when (val state = providerResult.state) {
+                    is ProviderResult.State.Success -> if (state.results.isNotEmpty()) 1 else 3
+                    is ProviderResult.State.Loading -> 2
+                    is ProviderResult.State.Error -> 4
                 }
+            }
 
-                _state.emit(State.SuccessGlobalSearching(mutableResults.sortedWith(stateComparator)))
+            targetProviders.forEachIndexed { index, provider ->
+                launch {
+                    try {
+                        val results = ParentalControlUtils.filterItems(provider.search(query).onEach { item ->
+                            // Mark each global result with its provider.
+                            
+                            when (item) {
+                                is Movie -> item.providerName = provider.name
+                                is TvShow -> item.providerName = provider.name
+                            }
+                            
+                        })
+                        mutableResults[index] = ProviderResult(provider, ProviderResult.State.Success(results))
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.e("SearchViewModel", "searchGlobal for ${provider.name}: ", e)
+                        mutableResults[index] = ProviderResult(provider, ProviderResult.State.Error(e))
+                    }
+
+                    _state.emit(State.SuccessGlobalSearching(mutableResults.sortedWith(stateComparator)))
+                }
             }
         }
     }

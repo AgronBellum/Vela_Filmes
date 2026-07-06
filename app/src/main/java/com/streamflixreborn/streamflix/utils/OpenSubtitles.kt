@@ -55,7 +55,7 @@ object OpenSubtitles {
 
         zip.delete()
 
-        subtitleFile.toUri()
+        SubtitleEncoding.normalizeFile(subtitleFile).toUri()
     }
 
     suspend fun search(

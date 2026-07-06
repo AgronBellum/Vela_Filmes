@@ -153,13 +153,13 @@ object ThemeManager {
             tvHeaderSecondary = color("#CFB7DA"),
         )
         else -> Palette(
-            mobileNavBackground = color("#1E2129"),
-            mobileNavActive = color("#C6C6C6"),
-            mobileNavInactive = color("#808080"),
-            systemBar = color("#1E2129"),
-            tvNavBackground = color("#181818"),
-            tvHeaderPrimary = color("#FFFFFF"),
-            tvHeaderSecondary = color("#B3FFFFFF"),
+            mobileNavBackground = color("#130E2A"),
+            mobileNavActive = color("#7C5CFF"),
+            mobileNavInactive = color("#BFB9DD"),
+            systemBar = color("#0F0B22"),
+            tvNavBackground = color("#130E2A"),
+            tvHeaderPrimary = color("#F1EEFF"),
+            tvHeaderSecondary = color("#BFB9DD"),
         )
     }
 

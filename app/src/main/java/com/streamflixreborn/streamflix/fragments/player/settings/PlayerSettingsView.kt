@@ -87,6 +87,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
         QUALITY,
         AUDIO,
         SUBTITLES,
+        SUBTITLE_SYNC,
         CAPTION_STYLE,
         CAPTION_STYLE_FONT_COLOR,
         CAPTION_STYLE_TEXT_SIZE,
@@ -162,6 +163,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 )
                 .setTrackTypeDisabled(audio.trackGroup.type, false)
                 .build()
+            UserPreferences.audioLanguage = audio.preferenceKey
         }
 
     protected var onSubtitleSelected: ((Settings.Subtitle) -> Unit) =
@@ -196,6 +198,33 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
             }
         }
 
+    protected var onSubtitleOffsetSelected: ((Settings.Subtitle.OffsetAdjustment) -> Unit) =
+        fun(offsetAdjustment) {
+            val player = player ?: return
+            UserPreferences.subtitleOffsetMs = when (offsetAdjustment) {
+                Settings.Subtitle.OffsetAdjustment.Advance -> UserPreferences.subtitleOffsetMs - Settings.Subtitle.OffsetAdjustment.STEP_MS
+                Settings.Subtitle.OffsetAdjustment.Reset -> 0
+                Settings.Subtitle.OffsetAdjustment.Delay -> UserPreferences.subtitleOffsetMs + Settings.Subtitle.OffsetAdjustment.STEP_MS
+            }
+            Settings.Subtitle.OffsetAdjustment.refresh()
+
+            val trackSelectionParameters = player.trackSelectionParameters
+            player.trackSelectionParameters = trackSelectionParameters
+                .buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                .build()
+            player.trackSelectionParameters = trackSelectionParameters
+                .buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                .build()
+
+            val duration = player.duration
+            val refreshPosition = when {
+                duration != C.TIME_UNSET -> (player.currentPosition + 1L).coerceAtMost(duration)
+                else -> player.currentPosition + 1L
+            }
+            player.seekTo(refreshPosition)
+        }
     protected var onCaptionStyleChanged: ((CaptionStyleCompat) -> Unit) =
         fun(captionStyle) {
             val subtitleView = subtitleView ?: return
@@ -389,6 +418,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 Quality,
                 Audio,
                 Subtitle,
+                SubtitleSync,
                 Speed,
                 Server,
                 ExtraBuffering,
@@ -401,6 +431,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 Quality,
                 Audio,
                 Subtitle,
+                SubtitleSync,
                 Speed,
                 Server,
                 ExtraBuffering,
@@ -410,6 +441,8 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
         }
 
         data object ManualZoom : Settings()
+
+        data object SubtitleSync : Settings()
 
         sealed class Gestures : Item {
             companion object : Settings() {
@@ -662,6 +695,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
                                         AudioTrackInformation(
                                             name = finalName,
+                                            language = trackFormat.language,
 
                                             trackGroup = trackGroup,
                                             trackIndex = trackIndex,
@@ -670,6 +704,20 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                             }
                             .sortedBy { it.name }
                     )
+                
+                    list.firstOrNull { it.matchesPreference(UserPreferences.audioLanguage ?: "eng") }
+                        ?.let { audio ->
+                            player.trackSelectionParameters = player.trackSelectionParameters
+                                .buildUpon()
+                                .setOverrideForType(
+                                    TrackSelectionOverride(
+                                        audio.trackGroup.mediaTrackGroup,
+                                        listOf(audio.trackIndex)
+                                    )
+                                )
+                                .setTrackTypeDisabled(audio.trackGroup.type, false)
+                                .build()
+                        }
                 }
             }
 
@@ -677,12 +725,31 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
             class AudioTrackInformation(
                 val name: String,
+                val language: String?,
 
                 val trackGroup: Tracks.Group,
                 val trackIndex: Int,
             ) : Audio() {
+                val preferenceKey: String
+                    get() = language?.takeIf { it.isNotBlank() } ?: name
+
+                fun matchesPreference(preference: String): Boolean {
+                    val wanted = normalizeLanguagePreference(preference)
+                    val values = listOfNotNull(language, name).map { normalizeLanguagePreference(it) }
+                    if (values.any { it == wanted || it.contains(wanted) || wanted.contains(it) }) return true
+                    return wanted in englishAudioKeys &&
+                        values.any { it in englishAudioKeys || it.contains("english") || it.contains("ingles") || it.contains("inglês") }
+                }
+
                 override val isSelected: Boolean
                     get() = trackGroup.isTrackSelected(trackIndex)
+
+                companion object {
+                    private val englishAudioKeys = setOf("en", "eng", "english", "ingles", "inglês")
+
+                    private fun normalizeLanguagePreference(value: String): String =
+                        value.lowercase().substringBefore("-").substringBefore("_").trim()
+                }
             }
         }
 
@@ -724,6 +791,23 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                             }
                             .sortedBy { it.language ?: it.label }
                     )
+
+                    UserPreferences.subtitleName?.takeIf { it.isNotBlank() }?.let { preferredSubtitle ->
+                        list.filterIsInstance<TextTrackInformation>()
+                            .firstOrNull { it.matchesPreference(preferredSubtitle) }
+                            ?.let { subtitle ->
+                                player.trackSelectionParameters = player.trackSelectionParameters
+                                    .buildUpon()
+                                    .setOverrideForType(
+                                        TrackSelectionOverride(
+                                            subtitle.trackGroup.mediaTrackGroup,
+                                            listOf(subtitle.trackIndex)
+                                        )
+                                    )
+                                    .setTrackTypeDisabled(subtitle.trackGroup.type, false)
+                                    .build()
+                            }
+                    }
                     list.add(LocalSubtitles)
                     list.add(OpenSubtitles)
                     // Add SubDL only if an API key is configured
@@ -1132,6 +1216,43 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 }
             }
 
+
+            sealed class OffsetAdjustment : Subtitle() {
+                abstract val stringId: Int
+                abstract val deltaMs: Int
+
+                val isSelected: Boolean
+                    get() = when (this) {
+                        Reset -> UserPreferences.subtitleOffsetMs == 0
+                        else -> false
+                    }
+
+                data object Advance : OffsetAdjustment() {
+                    override val stringId: Int get() = R.string.player_settings_subtitle_advance_label
+                    override val deltaMs: Int get() = -STEP_MS
+                }
+
+                data object Reset : OffsetAdjustment() {
+                    override val stringId: Int get() = R.string.player_settings_subtitle_offset_reset_label
+                    override val deltaMs: Int get() = 0
+                }
+
+                data object Delay : OffsetAdjustment() {
+                    override val stringId: Int get() = R.string.player_settings_subtitle_delay_label
+                    override val deltaMs: Int get() = STEP_MS
+                }
+
+                companion object {
+                    const val STEP_MS = 500
+                    val list = listOf(Advance, Reset, Delay)
+                    fun refresh() = Unit
+                    fun formattedValue(): String {
+                        val offset = UserPreferences.subtitleOffsetMs
+                        val sign = if (offset > 0) "+" else ""
+                        return sign + String.format(java.util.Locale.US, "%.2fs", offset / 1000.0)
+                    }
+                }
+            }
             data object None : Subtitle() {
                 val isSelected: Boolean
                     get() = list
@@ -1147,6 +1268,13 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 val trackGroup: Tracks.Group,
                 val trackIndex: Int,
             ) : Subtitle() {
+                fun matchesPreference(preference: String): Boolean {
+                    val wanted = preference.lowercase().trim()
+                    return listOfNotNull(language, label, name)
+                        .map { it.lowercase().trim() }
+                        .any { it == wanted || it.startsWith(wanted) || it.contains(wanted) || wanted.contains(it) }
+                }
+
                 val isSelected: Boolean
                     get() = trackGroup.isTrackSelected(trackIndex)
             }
@@ -1160,9 +1288,37 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
                     fun init(openSubtitles: List<com.streamflixreborn.streamflix.utils.OpenSubtitles.Subtitle>) {
                         list.clear()
-                        list.addAll(openSubtitles.map {
-                            Subtitle(it)
+                        list.addAll(openSubtitles.withIndex().sortedWith(compareBy(
+                            { openSubtitlePriority(it.value) },
+                            { it.index }
+                        )).map {
+                            Subtitle(it.value)
                         })
+                    }
+
+                    private fun openSubtitlePriority(subtitle: com.streamflixreborn.streamflix.utils.OpenSubtitles.Subtitle): Int {
+                        val values = listOfNotNull(
+                            subtitle.subLanguageID,
+                            subtitle.iso639,
+                            subtitle.languageName,
+                            subtitle.subFileName,
+                        ).map { it.lowercase() }
+
+                        return when {
+                            values.any {
+                                it == "pob" ||
+                                    it == "pt-br" ||
+                                    it == "pt_br" ||
+                                    it.contains("brazil") ||
+                                    it.contains("brasil")
+                            } -> 0
+                            values.any {
+                                it == "por" ||
+                                    it == "pt" ||
+                                    it.contains("portugu")
+                            } -> 1
+                            else -> 2
+                        }
                     }
                 }
 
@@ -1178,9 +1334,37 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
                     fun init(subDLSubtitles: List<com.streamflixreborn.streamflix.utils.SubDL.Subtitle>) {
                         list.clear()
-                        list.addAll(subDLSubtitles.map {
-                            Subtitle(it)
+                        list.addAll(subDLSubtitles.withIndex().sortedWith(compareBy(
+                            { subDLSubtitlePriority(it.value) },
+                            { it.index }
+                        )).map {
+                            Subtitle(it.value)
                         })
+                    }
+
+                    private fun subDLSubtitlePriority(subtitle: com.streamflixreborn.streamflix.utils.SubDL.Subtitle): Int {
+                        val values = listOfNotNull(
+                            subtitle.lang,
+                            subtitle.language,
+                            subtitle.name,
+                            subtitle.releaseName,
+                        ).map { it.lowercase() }
+
+                        return when {
+                            values.any {
+                                it == "pt-br" ||
+                                    it == "pt_br" ||
+                                    it.contains("brazil") ||
+                                    it.contains("brasil") ||
+                                    it.contains("portuguese-br") ||
+                                    it.contains("portuguese br")
+                            } -> 0
+                            values.any {
+                                it == "pt" ||
+                                    it.contains("portugu")
+                            } -> 1
+                            else -> 2
+                        }
                     }
                 }
 

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import com.streamflixreborn.streamflix.utils.SubDL
+import java.text.Normalizer
 
 class PlayerViewModel(
     videoType: Video.Type,
@@ -129,12 +130,13 @@ class PlayerViewModel(
             val currentProviderLang = UserPreferences.currentProvider?.language ?: ""
             val hasDefaultAlready = video.subtitles.any { it.default }
 
-            if (!hasDefaultAlready && currentProviderLang != "es") {
+            val preferredSubtitle = UserPreferences.subtitleName
+            if (!hasDefaultAlready && currentProviderLang != "es" && !preferredSubtitle.isNullOrBlank()) {
                 if (!(video.useServerSubtitleSetting && UserPreferences.serverAutoSubtitlesDisabled)) {
                     video.subtitles
-                        .firstOrNull { it.label.startsWith(UserPreferences.subtitleName ?: "") }
+                        .firstOrNull { it.label.startsWith(preferredSubtitle, ignoreCase = true) }
                         ?.default = true
-		}
+                }
             }
 
             Log.d("PlayerViewModel", "Estrazione video completata con successo")
@@ -161,9 +163,13 @@ class PlayerViewModel(
                         )
                     }
                     is Video.Type.Movie -> {
-                        OpenSubtitles.search(query = videoType.title)
-                    }
-                }.sortedWith(compareBy({ it.languageName }, { it.subDownloadsCnt }))
+                    OpenSubtitles.search(
+                        query = videoType.title,
+                    )
+                }
+                }
+                    .let { filterOpenSubtitles(videoType, it) }
+                    .sortedWith(compareBy({ it.languageName }, { it.subDownloadsCnt }))
                 
                 Log.d("PlayerViewModel", "Ricerca OpenSubtitles completata: ${subtitles.size} risultati")
                 _subtitleState.emit(SubtitleState.SuccessOpenSubtitles(subtitles))
@@ -193,8 +199,9 @@ class PlayerViewModel(
                     }
                 }
                 
-                Log.d("PlayerViewModel", "Ricerca SubDL completata: ${subtitles.size} risultati")
-                _subtitleState.emit(SubtitleState.SuccessSubDLSubtitles(subtitles))
+                val filteredSubtitles = filterSubDLSubtitles(videoType, subtitles)
+                Log.d("PlayerViewModel", "Ricerca SubDL completata: ${filteredSubtitles.size}/${subtitles.size} risultati")
+                _subtitleState.emit(SubtitleState.SuccessSubDLSubtitles(filteredSubtitles))
             } catch (e: Exception) {
                 Log.e("PlayerViewModel", "Errore SubDL: ", e)
                 _subtitleState.emit(SubtitleState.FailedSubDLSubtitles(e))
@@ -202,6 +209,88 @@ class PlayerViewModel(
         }
     }
 
+    private fun filterOpenSubtitles(
+        videoType: Video.Type,
+        subtitles: List<OpenSubtitles.Subtitle>,
+    ): List<OpenSubtitles.Subtitle> = subtitles.filter { subtitle ->
+        when (videoType) {
+            is Video.Type.Episode -> {
+                val combined = listOfNotNull(
+                    subtitle.movieName,
+                    subtitle.movieNameEng,
+                    subtitle.movieReleaseName,
+                    subtitle.subFileName,
+                    subtitle.infoOther,
+                ).joinToString(" ")
+                titleMatches(videoType.tvShow.title, combined) && episodeMatches(
+                    combined = combined,
+                    season = videoType.season.number,
+                    episode = videoType.number,
+                    seasonField = subtitle.seriesSeason,
+                    episodeField = subtitle.seriesEpisode,
+                )
+            }
+
+            is Video.Type.Movie -> {
+                val combined = listOfNotNull(
+                    subtitle.movieName,
+                    subtitle.movieNameEng,
+                    subtitle.movieReleaseName,
+                    subtitle.subFileName,
+                ).joinToString(" ")
+                titleMatches(videoType.title, combined)
+            }
+        }
+    }
+
+    private fun filterSubDLSubtitles(
+        videoType: Video.Type,
+        subtitles: List<SubDL.Subtitle>,
+    ): List<SubDL.Subtitle> = subtitles.filter { subtitle ->
+        val combined = listOfNotNull(subtitle.name, subtitle.releaseName).joinToString(" ")
+        when (videoType) {
+            is Video.Type.Episode -> titleMatches(videoType.tvShow.title, combined) &&
+                episodeMatches(combined, videoType.season.number, videoType.number)
+
+            is Video.Type.Movie -> titleMatches(videoType.title, combined)
+        }
+    }
+
+    private fun titleMatches(expectedTitle: String, candidate: String): Boolean {
+        val expected = normalizeSubtitleMatchText(expectedTitle)
+        val actual = normalizeSubtitleMatchText(candidate)
+        if (expected.isBlank() || actual.isBlank()) return false
+        return actual.contains(expected) || expected.contains(actual)
+    }
+
+    private fun episodeMatches(
+        combined: String,
+        season: Int,
+        episode: Int,
+        seasonField: String? = null,
+        episodeField: String? = null,
+    ): Boolean {
+        val fieldSeason = seasonField?.toIntOrNull()
+        val fieldEpisode = episodeField?.toIntOrNull()
+        if (fieldSeason != null || fieldEpisode != null) {
+            return fieldSeason == season && fieldEpisode == episode
+        }
+
+        val text = normalizeSubtitleMatchText(combined)
+        val seasonPadded = season.toString().padStart(2, '0')
+        val episodePadded = episode.toString().padStart(2, '0')
+        val compact = text.replace(" ", "")
+        return compact.contains("s${seasonPadded}e${episodePadded}") ||
+            compact.contains("s${season}e${episodePadded}") ||
+            compact.contains("${season}x${episodePadded}") ||
+            compact.contains("${season}x${episode}")
+    }
+
+    private fun normalizeSubtitleMatchText(value: String?): String = Normalizer
+        .normalize(value.orEmpty().lowercase(), Normalizer.Form.NFD)
+        .replace("\\p{Mn}+".toRegex(), "")
+        .replace("[^a-z0-9]+".toRegex(), " ")
+        .trim()
     fun downloadSubtitle(subtitle: OpenSubtitles.Subtitle) = viewModelScope.launch(Dispatchers.IO) {
         Log.d("PlayerViewModel", "Inizio download sottotitolo OpenSubtitles: ${subtitle.subFileName}")
         _subtitleState.emit(SubtitleState.DownloadingOpenSubtitle)

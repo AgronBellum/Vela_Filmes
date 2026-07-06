@@ -88,6 +88,15 @@ private object ArtworkRepairCoordinator {
     }
 }
 
+
+private val TmdbImageSizeSegment = Regex("/t/p/(w\\d+|original)/")
+
+fun String?.preferBannerArtworkQuality(): String? {
+    val url = this ?: return null
+    if (!url.contains("image.tmdb.org/t/p/")) return url
+    return TmdbImageSizeSegment.replaceFirst(url, "/t/p/w1280/")
+}
+
 private fun ImageView.loadRecoverableArtwork(
     initialUrl: String?,
     configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable>,
@@ -156,9 +165,9 @@ fun ImageView.loadMovieBanner(
     movie: Movie,
     configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable> = { this },
 ) {
-    loadRecoverableArtwork(movie.banner, configure) { staleUrl, onUpdated ->
+    loadRecoverableArtwork(movie.banner.preferBannerArtworkQuality(), configure) { staleUrl, onUpdated ->
         ArtworkRepairCoordinator.repairMovieArtwork(this, movie, staleUrl) { refreshedMovie ->
-            val refreshedUrl = refreshedMovie.banner
+            val refreshedUrl = refreshedMovie.banner.preferBannerArtworkQuality()
             if (!refreshedUrl.isNullOrBlank() && refreshedUrl != staleUrl) {
                 onUpdated(refreshedUrl)
             }
@@ -184,9 +193,9 @@ fun ImageView.loadTvShowBanner(
     tvShow: TvShow,
     configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable> = { this },
 ) {
-    loadRecoverableArtwork(tvShow.banner, configure) { staleUrl, onUpdated ->
+    loadRecoverableArtwork(tvShow.banner.preferBannerArtworkQuality(), configure) { staleUrl, onUpdated ->
         ArtworkRepairCoordinator.repairTvShowArtwork(this, tvShow, staleUrl) { refreshedTvShow ->
-            val refreshedUrl = refreshedTvShow.banner
+            val refreshedUrl = refreshedTvShow.banner.preferBannerArtworkQuality()
             if (!refreshedUrl.isNullOrBlank() && refreshedUrl != staleUrl) {
                 onUpdated(refreshedUrl)
             }

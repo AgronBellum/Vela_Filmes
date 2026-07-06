@@ -58,7 +58,11 @@ object UserPreferences {
                 runCatching { JSONObject(jsonString) }
                     .getOrDefault(JSONObject())
 
-            if (Key.CURRENT_PROVIDER.getString().isNullOrEmpty()) {
+            val savedProvider = Key.CURRENT_PROVIDER.getString()
+            val mustUseBrazilianTmdb = savedProvider.isNullOrEmpty() ||
+                savedProvider.startsWith("VELA FILMES (") ||
+                savedProvider.startsWith("TMDb (")
+            if (mustUseBrazilianTmdb) {
                 Key.CURRENT_PROVIDER.setString(TmdbProvider("pt-BR").name)
             }
         }
@@ -69,15 +73,14 @@ object UserPreferences {
             val providerName = Key.CURRENT_PROVIDER.getString()
 
             if (providerName.isNullOrEmpty()) {
-                return TmdbProvider("pt")
+                return TmdbProvider("pt-BR")
             }
 
-            if (providerName.startsWith("TMDb (") && providerName.endsWith(")")) {
-                val lang = providerName.substringAfter("TMDb (").substringBefore(")")
-                return TmdbProvider(lang)
+            if ((providerName.startsWith("TMDb (") || providerName.startsWith("VELA FILMES (")) && providerName.endsWith(")")) {
+                return TmdbProvider("pt-BR")
             }
 
-            return Provider.providers.keys.find { it.name == providerName } ?: TmdbProvider("pt")
+            return Provider.providers.keys.find { it.name == providerName } ?: TmdbProvider("pt-BR")
         }
         set(value) {
             // CRITICO: Resetta l'istanza del database prima di cambiare provider
@@ -166,6 +169,13 @@ object UserPreferences {
         get() = Key.AUTOPLAY_BUFFER.getLong() ?: 3L
         set(value) {
             Key.AUTOPLAY_BUFFER.setLong(value)
+        }
+
+
+    var preferDubbedPlayback: Boolean
+        get() = Key.PREFER_DUBBED_PLAYBACK.getBoolean() ?: false
+        set(value) {
+            Key.PREFER_DUBBED_PLAYBACK.setBoolean(value)
         }
 
     var serverAutoSubtitlesDisabled: Boolean
@@ -360,9 +370,17 @@ object UserPreferences {
             Key.QUALITY_HEIGHT.setInt(value)
         }
 
+    var audioLanguage: String?
+        get() = Key.AUDIO_LANGUAGE.getString()
+        set(value) = Key.AUDIO_LANGUAGE.setString(value)
+
     var subtitleName: String?
         get() = Key.SUBTITLE_NAME.getString()
         set(value) = Key.SUBTITLE_NAME.setString(value)
+    
+    var subtitleOffsetMs: Int
+        get() = Key.SUBTITLE_OFFSET_MS.getInt() ?: 0
+        set(value) = Key.SUBTITLE_OFFSET_MS.setInt(value.coerceIn(-60_000, 60_000))
     var streamingcommunityDomain: String
         get() {
             if (!::prefs.isInitialized) {
@@ -491,7 +509,9 @@ object UserPreferences {
         SCREEN_PADDING_X,
         SCREEN_PADDING_Y,
         QUALITY_HEIGHT,
+        AUDIO_LANGUAGE,
         SUBTITLE_NAME,
+        SUBTITLE_OFFSET_MS,
         STREAMINGCOMMUNITY_DOMAIN,
         CUEVANA_DOMAIN,
         POSEIDON_DOMAIN,
@@ -505,6 +525,7 @@ object UserPreferences {
         SUBDL_API_KEY,
         FORCE_EXTRA_BUFFERING,
         AUTOPLAY_BUFFER,
+        PREFER_DUBBED_PLAYBACK,
         SERVER_AUTO_SUBTITLES_DISABLED,
         ENABLE_TMDB,
         PARENTAL_CONTROL_PIN,
@@ -601,3 +622,5 @@ object UserPreferences {
             }
     }
 }
+
+

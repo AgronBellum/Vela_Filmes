@@ -1,4 +1,4 @@
-package com.streamflixreborn.streamflix.extractors
+﻿package com.streamflixreborn.streamflix.extractors
 
 import android.util.Log
 import com.streamflixreborn.streamflix.models.Video
@@ -109,6 +109,8 @@ abstract class Extractor {
             VidsonicExtractor(),
             HxfileExtractor(),
             ZillaExtractor(),
+            SuperCineExtractor(),
+            PlayerFlixExtractor(),
             PDrainExtractor()
         )
 
@@ -116,8 +118,8 @@ abstract class Extractor {
             var finalLink = link
             
             // 1. RISOLUZIONE BRIDGE UNIVERSALE (StreamHG/Sync/Cuevana)
-            // Facciamo questo PRIMA di cercare l'estrattore perché il link bridge (es. mysync.mov)
-            // non appartiene a nessun estrattore specifico, ma il link risolto sì (es. filemoon).
+            // Facciamo questo PRIMA di cercare l'estrattore perchÃ© il link bridge (es. mysync.mov)
+            // non appartiene a nessun estrattore specifico, ma il link risolto sÃ¬ (es. filemoon).
             if (link.contains("mysync.mov/stream/")) {
                 try {
                     val client = okhttp3.OkHttpClient.Builder()
@@ -224,3 +226,13 @@ abstract class Extractor {
         }
     }
 }
+
+
+
+
+
+
+
+
+
+

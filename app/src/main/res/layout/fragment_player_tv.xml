@@ -28,12 +28,13 @@
 
     <com.streamflixreborn.streamflix.fragments.player.settings.PlayerSettingsTvView
         android:id="@+id/settings"
-        android:layout_width="350dp"
+        android:layout_width="0dp"
         android:layout_height="0dp"
-        android:elevation="8dp"
+        android:elevation="12dp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         tools:visibility="visible" />
 
@@ -89,6 +90,7 @@
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         android:layout_marginEnd="32dp"
         tools:visibility="visible">
@@ -122,5 +124,33 @@
             android:src="@drawable/ic_player_settings_audio"
             app:tint="#FFFFFF" />
     </LinearLayout>
+    <LinearLayout
+        android:id="@+id/ll_server_loading"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#CC000000"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
+        <ProgressBar
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:indeterminate="true" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/player_searching_server"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
+
+
