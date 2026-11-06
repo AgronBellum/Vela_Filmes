@@ -416,7 +416,10 @@ class HomeViewModel(private val database: AppDatabase) : ViewModel() {
             .distinctBy { it.id }
             .take(3)
 
-        val watchedIds = (movieSeeds.map { it.id } + tvSeeds.map { it.id }).toSet()
+        val excludedMovieIds = database.movieDao().getRecommendationExclusionIds().toSet()
+        val excludedTvShowIds = (
+            database.episodeDao().getRecommendationExclusionTvShowIds() + favoriteShows.map { it.id }
+        ).toSet()
         val related = (movieSeeds.map { movie ->
             async {
                 withTimeoutOrNull(8_000) {
@@ -447,8 +450,8 @@ class HomeViewModel(private val database: AppDatabase) : ViewModel() {
         val personalized = (related + weeklyHighlights)
             .filter {
                 when (it) {
-                    is Movie -> it.id !in watchedIds
-                    is TvShow -> it.id !in watchedIds
+                    is Movie -> it.id !in excludedMovieIds
+                    is TvShow -> it.id !in excludedTvShowIds
                     else -> false
                 }
             }

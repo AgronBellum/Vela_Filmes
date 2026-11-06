@@ -77,6 +77,9 @@ interface EpisodeDao {
     @Query("SELECT * FROM episodes WHERE lastEngagementTimeUtcMillis IS NOT NULL ORDER BY lastEngagementTimeUtcMillis DESC")
     fun getWatchingEpisodes(): Flow<List<Episode>>
 
+    @Query("SELECT DISTINCT tvShow FROM episodes WHERE tvShow IS NOT NULL AND (isWatched = 1 OR lastEngagementTimeUtcMillis IS NOT NULL)")
+    suspend fun getRecommendationExclusionTvShowIds(): List<String>
+
     @Query(
         """
         SELECT DISTINCT tvShow

@@ -36,6 +36,9 @@ interface MovieDao {
     @Query("SELECT * FROM movies WHERE lastEngagementTimeUtcMillis IS NOT NULL ORDER BY lastEngagementTimeUtcMillis DESC")
     fun getWatchingMovies(): Flow<List<Movie>>
 
+    @Query("SELECT id FROM movies WHERE isWatched = 1 OR isFavorite = 1 OR lastEngagementTimeUtcMillis IS NOT NULL")
+    suspend fun getRecommendationExclusionIds(): List<String>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(movie: Movie)
 
