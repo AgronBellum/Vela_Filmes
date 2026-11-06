@@ -132,14 +132,14 @@ class MainMobileActivity : FragmentActivity() {
             supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as NavHostFragment
         val navController = navHost.navController
 
-        if (BuildConfig.APP_LAYOUT == "tv" ||
-            (BuildConfig.APP_LAYOUT != "mobile" &&
-                packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK))
-        ) {
-            finish()
-            startActivity(Intent(this, MainTvActivity::class.java))
-            return
-        }
+        //if (BuildConfig.APP_LAYOUT == "tv" ||
+      //      (BuildConfig.APP_LAYOUT != "mobile" &&
+      //          packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK))
+      //  ) {
+       //     finish()
+      //      startActivity(Intent(this, MainTvActivity::class.java))
+       //     return
+       // }
 
         if (savedInstanceState == null) {
             UserPreferences.currentProvider?.let {

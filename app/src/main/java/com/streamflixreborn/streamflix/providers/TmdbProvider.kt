@@ -6,6 +6,10 @@ import com.streamflixreborn.streamflix.extractors.Extractor
 import com.streamflixreborn.streamflix.extractors.MoflixExtractor
 import com.streamflixreborn.streamflix.extractors.MoviesapiExtractor
 import com.streamflixreborn.streamflix.extractors.PlayerFlixExtractor
+import com.streamflixreborn.streamflix.extractors.MegaFlixExtractor
+import com.streamflixreborn.streamflix.extractors.EmbedPlayApiExtractor
+import com.streamflixreborn.streamflix.extractors.WatchPlayExtractor
+import com.streamflixreborn.streamflix.extractors.ClickHostExtractor
 import com.streamflixreborn.streamflix.extractors.TwoEmbedExtractor
 import com.streamflixreborn.streamflix.extractors.VidsrcNetExtractor
 import com.streamflixreborn.streamflix.extractors.VidsrcToExtractor
@@ -13,6 +17,7 @@ import com.streamflixreborn.streamflix.extractors.VidzeeExtractor
 import com.streamflixreborn.streamflix.extractors.VixSrcExtractor
 import com.streamflixreborn.streamflix.extractors.VidLinkExtractor
 import com.streamflixreborn.streamflix.extractors.VidsrcRuExtractor
+import com.streamflixreborn.streamflix.extractors.VidsrcXyzExtractor
 import com.streamflixreborn.streamflix.extractors.EinschaltenExtractor
 import com.streamflixreborn.streamflix.extractors.FrembedExtractor
 import com.streamflixreborn.streamflix.extractors.VidflixExtractor
@@ -31,6 +36,7 @@ import com.streamflixreborn.streamflix.utils.TMDb3
 import com.streamflixreborn.streamflix.utils.TMDb3.original
 import com.streamflixreborn.streamflix.utils.TMDb3.w500
 import com.streamflixreborn.streamflix.utils.UserPreferences
+import com.streamflixreborn.streamflix.utils.ServerLanguage
 import com.streamflixreborn.streamflix.utils.safeSubList
 import android.util.Base64
 import android.util.Log
@@ -834,6 +840,7 @@ class TmdbProvider(languageTag: String) : Provider {
                     VidsrcNetExtractor().server(videoType),
                     VidLinkExtractor().server(videoType),
                     VidsrcRuExtractor().server(videoType),
+                    VidsrcXyzExtractor().server(videoType),
                     VidflixExtractor().server(videoType),
                 ))
 
@@ -846,10 +853,39 @@ class TmdbProvider(languageTag: String) : Provider {
                 servers.addAll(PrimeSrcExtractor().servers(videoType))
 
                 if (language == "pt-BR") {
-                    val playerFlixServers = PlayerFlixExtractor().servers(videoType)
-                    servers.addAll(if (UserPreferences.preferDubbedPlayback) 0 else 1, playerFlixServers)
-                    servers.addAll(if (UserPreferences.preferDubbedPlayback) playerFlixServers.size + 1 else 2, VideasyExtractor().servers(videoType, language))
-                }
+    // 1. Instancia e busca os servidores primeiro
+    val embedPlayApiServers = EmbedPlayApiExtractor().servers(videoType)
+    val clickHostServers = ClickHostExtractor().servers(videoType)
+    val megaFlixServers = MegaFlixExtractor().servers(videoType)
+    val watchPlayServers = WatchPlayExtractor().servers(videoType)
+    val playerFlixServers = PlayerFlixExtractor().servers(videoType)
+    val videasyServers = VideasyExtractor().servers(videoType, language)
+
+    // 2. Calcula o ponto de inserção inicial com segurança
+    var offset = if (UserPreferences.preferDubbedPlayback) 0 else 1
+    offset = offset.coerceAtMost(servers.size)
+
+    // 1º - EmbedPlayAPI
+    servers.addAll(offset, embedPlayApiServers)
+    offset += embedPlayApiServers.size
+
+    // Intermediários
+    servers.addAll(offset, playerFlixServers)
+    offset += playerFlixServers.size
+
+    servers.addAll(offset, clickHostServers)
+    offset += clickHostServers.size
+
+    servers.addAll(offset, watchPlayServers)
+    offset += watchPlayServers.size
+
+    // Penúltimo - MegaFlix
+    servers.addAll(offset, megaFlixServers)
+    offset += megaFlixServers.size
+
+    // Último - Videasy
+    servers.addAll(offset, videasyServers)
+}
             }
         }
 
@@ -872,6 +908,8 @@ class TmdbProvider(languageTag: String) : Provider {
                     else -> 0
                 }
             }
+        } else if (language.equals("pt-BR", ignoreCase = true) && UserPreferences.preferDubbedPlayback) {
+            servers.sortedByDescending(ServerLanguage::portugueseDubPriority)
         } else {
             servers
         }
@@ -981,10 +1019,3 @@ class TmdbProvider(languageTag: String) : Provider {
         fun watchRegionFor(language: String): String = "BR"
     }
 }
-
-
-
-
-
-
-

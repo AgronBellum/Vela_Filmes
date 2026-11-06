@@ -1,6 +1,7 @@
 ﻿package com.streamflixreborn.streamflix.extractors
 
 import android.util.Log
+import androidx.media3.common.MimeTypes
 import com.streamflixreborn.streamflix.models.Video
 
 abstract class Extractor {
@@ -10,10 +11,10 @@ abstract class Extractor {
     open val aliasUrls: List<String> = emptyList()
     open val rotatingDomain: List<Regex> = emptyList()
 
-    // THIS is the main method all subclasses must implement
+    // Método principal que todos os subclasses devem implementar para extrair o vídeo
     abstract suspend fun extract(link: String): Video
 
-    // THIS is a convenience helper
+    // Auxiliar de extração
     open suspend fun extract(link: String, server: Video.Server? = null): Video {
         return extract(link)
     }
@@ -91,6 +92,7 @@ abstract class Extractor {
             EinschaltenExtractor(),
             VidLinkExtractor(),
             VidsrcRuExtractor(),
+            VidsrcXyzExtractor(),
             VidflixExtractor(),
             VidrockExtractor(),
             VideasyExtractor(),
@@ -109,17 +111,18 @@ abstract class Extractor {
             VidsonicExtractor(),
             HxfileExtractor(),
             ZillaExtractor(),
-            SuperCineExtractor(),
             PlayerFlixExtractor(),
-            PDrainExtractor()
+            PDrainExtractor(),
+            ClickHostExtractor(),
+            WatchPlayExtractor(),
+            EmbedPlayApiExtractor(),
+            MegaFlixExtractor()
         )
 
         suspend fun extract(link: String, server: Video.Server? = null): Video {
             var finalLink = link
             
             // 1. RISOLUZIONE BRIDGE UNIVERSALE (StreamHG/Sync/Cuevana)
-            // Facciamo questo PRIMA di cercare l'estrattore perchÃ© il link bridge (es. mysync.mov)
-            // non appartiene a nessun estrattore specifico, ma il link risolto sÃ¬ (es. filemoon).
             if (link.contains("mysync.mov/stream/")) {
                 try {
                     val client = okhttp3.OkHttpClient.Builder()
@@ -217,22 +220,37 @@ abstract class Extractor {
 
             if (foundExtractor != null) {
                 Log.i("StreamFlixES", "[EXTRACTOR] -> Starting: ${foundExtractor.name} (URL: $finalLink)")
-                val video = foundExtractor.extract(finalLink)
+                val video = foundExtractor.extract(finalLink, server)
                 Log.i("StreamFlixES", "[VIDEO] -> Extracted: ${video.source}")
                 return video
             }
 
+            if (isDirectMediaUrl(finalLink)) {
+                Log.i("StreamFlixES", "[VIDEO] -> Using direct media URL: $finalLink")
+                return Video(
+                    source = finalLink,
+                    type = inferMimeType(finalLink),
+                )
+            }
+
             throw Exception("No extractors found for URL: $finalLink")
+        }
+
+        private fun isDirectMediaUrl(url: String): Boolean {
+            val lower = url.lowercase()
+            return lower.contains(".m3u8") ||
+                lower.contains(".mp4") ||
+                lower.contains(".mkv") ||
+                lower.contains(".webm")
+        }
+
+        private fun inferMimeType(url: String): String? {
+            val lower = url.lowercase()
+            return when {
+                lower.contains(".m3u8") -> MimeTypes.APPLICATION_M3U8
+                lower.contains(".mp4") -> MimeTypes.VIDEO_MP4
+                else -> null
+            }
         }
     }
 }
-
-
-
-
-
-
-
-
-
-

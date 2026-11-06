@@ -71,6 +71,7 @@ import com.streamflixreborn.streamflix.utils.setMediaServerId
 import com.streamflixreborn.streamflix.utils.setMediaServers
 import com.streamflixreborn.streamflix.utils.SubtitleEncoding
 import com.streamflixreborn.streamflix.utils.SubtitleOffsetRenderersFactory
+import com.streamflixreborn.streamflix.utils.ServerLanguage
 import com.streamflixreborn.streamflix.utils.toSubtitleMimeType
 import com.streamflixreborn.streamflix.utils.viewModelsFactory
 import kotlinx.coroutines.launch
@@ -99,6 +100,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.internal.userAgent
 import java.util.Locale
+
 
 class PlayerMobileFragment : Fragment() {
 
@@ -242,7 +244,6 @@ class PlayerMobileFragment : Fragment() {
         isIgnoringPip = false
         if (::player.isInitialized) {
             binding.pvPlayer.useController = true
-            // Resume playback after returning from bypass or any pause
             if (!player.isPlaying) {
                 player.play()
             }
@@ -373,7 +374,7 @@ class PlayerMobileFragment : Fragment() {
                         if (nextServer != null) {
                             viewModel.getVideo(nextServer)
                         } else {
-                                showServerLoading(false)
+                            showServerLoading(false)
                             val providerName = UserPreferences.currentProvider?.name ?: ""
                             val isTmdb = providerName.contains("TMDb", ignoreCase = true)
                             val isAD = providerName.contains("AfterDark", ignoreCase = true)
@@ -441,7 +442,10 @@ class PlayerMobileFragment : Fragment() {
                         )
                         player.prepare()
                         UserPreferences.subtitleName = (state.subtitle.languageName ?: fileName).substringBefore(" ")
-                        player.trackSelectionParameters = currentTrackSelectionParameters
+                        player.trackSelectionParameters = currentTrackSelectionParameters.buildUpon()
+                            .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                            .build()
                         player.seekTo(currentPosition)
                         player.play()
                     }
@@ -491,13 +495,59 @@ class PlayerMobileFragment : Fragment() {
                     is PlayerViewModel.SubtitleState.FailedDownloadingSubDLSubtitle -> {
                         Toast.makeText(requireContext(), "${state.subtitle.name}: ${state.error.message}", Toast.LENGTH_LONG).show()
                     }
+
+                    is PlayerViewModel.SubtitleState.SuccessStremioSubtitles -> {
+                        binding.settings.stremioSubtitles = state.subtitles
+                    }
+                    is PlayerViewModel.SubtitleState.FailedStremioSubtitles -> {}
+                    PlayerViewModel.SubtitleState.DownloadingStremioSubtitle -> {}
+                    is PlayerViewModel.SubtitleState.SuccessDownloadingStremioSubtitle -> {
+                        val fileName = state.label
+                        val currentPosition = player.currentPosition
+                        val currentTrackSelectionParameters = player.trackSelectionParameters
+                        val currentSubtitleConfigurations = player.currentMediaItem?.localConfiguration?.subtitleConfigurations?.map {
+                            MediaItem.SubtitleConfiguration.Builder(it.uri)
+                                .setMimeType(it.mimeType)
+                                .setLabel(it.label)
+                                .setLanguage(it.language)
+                                .setSelectionFlags(0)
+                                .build()
+                        } ?: listOf()
+                        player.setMediaItem(
+                            MediaItem.Builder()
+                                .setUri(player.currentMediaItem?.localConfiguration?.uri)
+                                .setMimeType(player.currentMediaItem?.localConfiguration?.mimeType)
+                                .setSubtitleConfigurations(
+                                    currentSubtitleConfigurations + MediaItem.SubtitleConfiguration.Builder(state.uri)
+                                        .setMimeType(state.mimeType)
+                                        .setLabel(fileName)
+                                        .setLanguage(state.languageTag)
+                                        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                                        .build()
+                                )
+                                .setMediaMetadata(player.mediaMetadata)
+                                .build()
+                        )
+                        player.prepare()
+                        UserPreferences.subtitleName = fileName.substringBefore(" ")
+                        player.trackSelectionParameters = currentTrackSelectionParameters.buildUpon()
+                            .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                            .setPreferredTextLanguage(state.languageTag)
+                            .build()
+                        player.seekTo(currentPosition)
+                        player.play()
+                    }
+                    is PlayerViewModel.SubtitleState.FailedDownloadingStremioSubtitle -> {
+                        Toast.makeText(requireContext(), state.error.message ?: "Erro ao baixar legenda Stremio", Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-                viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                    viewModel.playPreviousOrNextEpisode.collect { nextEpisode ->
+            viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.playPreviousOrNextEpisode.collect { nextEpisode ->
                     releasePlayer()
                     isSetupDone = false
                     val action = PlayerMobileFragmentDirections
@@ -505,7 +555,7 @@ class PlayerMobileFragment : Fragment() {
                             id = nextEpisode.id,
                             videoType = nextEpisode,
                             title = nextEpisode.tvShow.title,
-                            subtitle = "S${nextEpisode.season.number} E${nextEpisode.number}  \u2022  ${nextEpisode.title}"
+                            subtitle = "S${nextEpisode.season.number} E${nextEpisode.number}  •  ${nextEpisode.title}"
                         )
 
                     findNavController().navigate(
@@ -520,8 +570,6 @@ class PlayerMobileFragment : Fragment() {
                 }
             }
         }
-
-
     }
 
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean) {
@@ -575,7 +623,6 @@ class PlayerMobileFragment : Fragment() {
         else -> false
     }
 
-
     private fun initializeVideo() {
         WindowCompat.getInsetsController(
             requireActivity().window,
@@ -606,7 +653,6 @@ class PlayerMobileFragment : Fragment() {
             }
             is Video.Type.Movie -> {EpisodeManager.clearEpisodes()}
         }
-
 
         binding.settings.onSubtitlesClicked = {
             viewModel.getSubtitles(args.videoType)
@@ -717,6 +763,14 @@ class PlayerMobileFragment : Fragment() {
             viewModel.downloadSubDLSubtitle(subtitle.subDLSubtitle)
         }
 
+        // Correção aplicada: uso seguro do cast e reflexão para o Stremio
+        binding.settings.setOnStremioSubtitleSelectedListener { subtitleItem ->
+            val subtitle = subtitleItem.stremioSubtitle
+            if (!subtitle.url.isNullOrBlank()) {
+                viewModel.downloadStremioSubtitle(requireContext(), subtitle)
+            }
+        }
+
         binding.settings.setOnExtraBufferingSelectedListener {
             lifecycleScope.launch {
                 displayVideo(
@@ -738,7 +792,7 @@ class PlayerMobileFragment : Fragment() {
         }
     }
 
- private fun updatePlayerScale() {
+    private fun updatePlayerScale() {
         val videoSurfaceView = binding.pvPlayer.videoSurfaceView
         val playerResize = UserPreferences.playerResize 
 
@@ -893,14 +947,12 @@ class PlayerMobileFragment : Fragment() {
         }
     }
 
-
     private suspend fun displayVideo(video: Video, server: Video.Server) {
         currentVideo = video
         currentServer = server
         updatePlayerHeader()
 
         val extraBuffering = PlayerSettingsView.Settings.ExtraBuffering.isEnabled
-
         val softwareDecoder = PlayerSettingsView.Settings.SoftwareDecoder.isEnabled
         val needsReinit =
             extraBuffering != currentExtraBuffering || softwareDecoder != currentSoftwareDecoder
@@ -919,20 +971,22 @@ class PlayerMobileFragment : Fragment() {
 
         val currentPosition = player.currentPosition
 
-        httpDataSource.setDefaultRequestProperties(
-            mapOf(
-                "User-Agent" to userAgent,
-            ) + (video.headers ?: emptyMap())
-        )
+        val playbackHeaders = mapOf("User-Agent" to userAgent) + (video.headers ?: emptyMap())
+        httpDataSource.setDefaultRequestProperties(playbackHeaders)
 
+        val normalizedSource = SubtitleEncoding.normalizeHlsSubtitles(
+            requireContext(),
+            video.source,
+            playbackHeaders
+        )
         val normalizedSubtitles = SubtitleEncoding.normalizeVideoSubtitles(
             requireContext(),
             video.subtitles,
-            mapOf("User-Agent" to userAgent) + (video.headers ?: emptyMap())
+            playbackHeaders
         )
         player.setMediaItem(
             MediaItem.Builder()
-                .setUri(video.source.toUri())
+                .setUri(normalizedSource.toUri())
                 .setMimeType(video.type)
                 .setSubtitleConfigurations(normalizedSubtitles.map { subtitle ->
                     MediaItem.SubtitleConfiguration.Builder(subtitle.file.toUri())
@@ -959,7 +1013,6 @@ class PlayerMobileFragment : Fragment() {
             
             var sourceUri: Uri
             val mimeType = "video/*"
-            
             val initialSource = video.source
 
             if (initialSource.startsWith("data:application/vnd.apple.mpegurl;base64,")) {
@@ -968,7 +1021,6 @@ class PlayerMobileFragment : Fragment() {
                 
                 if (extractedUrl != null) {
                     sourceUri = extractedUrl.toUri()
-                    Log.i("ExternalPlayer", "Link reale estratto: $sourceUri")
                 } else {
                     try {
                         val file = File(requireContext().cacheDir, "stream.m3u8")
@@ -982,18 +1034,13 @@ class PlayerMobileFragment : Fragment() {
                 sourceUri = initialSource.toUri()
             }
 
-            Log.i("ExternalPlayer", "Avvio intent con URI: $sourceUri e MIME: $mimeType")
-
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(sourceUri, mimeType)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                
                 putExtra("title", videoTitle)
                 putExtra("position", player.currentPosition.toInt())
                 putExtra("return_result", true)
-                
                 putExtra("extra_headers", video.headers?.map { "${it.key}: ${it.value}" }?.toTypedArray())
-                
                 if (video.headers != null) {
                     val headersArray = video.headers.flatMap { listOf(it.key, it.value) }.toTypedArray()
                     putExtra("headers", headersArray)
@@ -1004,7 +1051,6 @@ class PlayerMobileFragment : Fragment() {
                 val receiverIntent = Intent("ACTION_PLAYER_CHOSEN").apply {
                     setPackage(requireContext().packageName)
                 }
-                
                 val pendingIntent = PendingIntent.getBroadcast(
                     requireContext(), 0, receiverIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
@@ -1022,10 +1068,10 @@ class PlayerMobileFragment : Fragment() {
                     startActivity(Intent.createChooser(intent, getString(R.string.player_external_player_title)))
                 }
             } catch (e: Exception) {
-                Log.e("ExternalPlayer", "Errore selettore app", e)
                 startActivity(Intent.createChooser(intent, getString(R.string.player_external_player_title)))
             }
         }
+
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 super.onIsPlayingChanged(isPlaying)
@@ -1066,44 +1112,44 @@ class PlayerMobileFragment : Fragment() {
                         }
                     }
 
-                            when (videoType) {
-                                is Video.Type.Movie -> {
-                                    val provider = UserPreferences.currentProvider ?: return
-                                    val movie = watchItem as? Movie
-                                    movie?.let {
-                                        database.movieDao().update(it)
-                                        UserDataCache.syncMovieToCache(requireContext(), provider, it)
-                                    }
+                    when (videoType) {
+                        is Video.Type.Movie -> {
+                            val provider = UserPreferences.currentProvider ?: return
+                            val movie = watchItem as? Movie
+                            movie?.let {
+                                database.movieDao().update(it)
+                                UserDataCache.syncMovieToCache(requireContext(), provider, it)
+                            }
+                        }
+
+                        is Video.Type.Episode -> {
+                            val provider = UserPreferences.currentProvider ?: return
+                            val episode = watchItem as? Episode
+                            episode?.let {
+                                if (player.hasFinished()) {
+                                    database.episodeDao().resetProgressionFromEpisode(videoType.id)
+                                    UserDataCache.removeEpisodeFromContinueWatching(requireContext(), provider, it.id)
+                                    queueNextEpisodeForContinueWatching(provider)
+                                }
+                                database.episodeDao().update(it)
+                                if (!player.hasFinished()) {
+                                    UserDataCache.syncEpisodeToCache(requireContext(), provider, it)
                                 }
 
-                                is Video.Type.Episode -> {
-                                    val provider = UserPreferences.currentProvider ?: return
-                                    val episode = watchItem as? Episode
-                                    episode?.let {
-                                        if (player.hasFinished()) {
-                                            database.episodeDao().resetProgressionFromEpisode(videoType.id)
-                                            UserDataCache.removeEpisodeFromContinueWatching(requireContext(), provider, it.id)
-                                            queueNextEpisodeForContinueWatching(provider)
-                                        }
-                                        database.episodeDao().update(it)
-                                        if (!player.hasFinished()) {
-                                            UserDataCache.syncEpisodeToCache(requireContext(), provider, it)
-                                        }
-
-                                        it.tvShow?.let { tvShow ->
-                                            database.tvShowDao().getById(tvShow.id)
-                                        }?.let { tvShow ->
-                                            val episodeDao = database.episodeDao()
-                                            val isStillWatching = episodeDao.hasAnyWatchHistoryForTvShow(tvShow.id)
-                                            
-                                            database.tvShowDao().save(tvShow.copy().apply {
-                                                merge(tvShow)
-                                                isWatching = !player.hasReallyFinished() || isStillWatching
-                                            })
-                                        }
-                                    }
+                                it.tvShow?.let { tvShow ->
+                                    database.tvShowDao().getById(tvShow.id)
+                                }?.let { tvShow ->
+                                    val episodeDao = database.episodeDao()
+                                    val isStillWatching = episodeDao.hasAnyWatchHistoryForTvShow(tvShow.id)
+                                    
+                                    database.tvShowDao().save(tvShow.copy().apply {
+                                        merge(tvShow)
+                                        isWatching = !player.hasReallyFinished() || isStillWatching
+                                    })
                                 }
                             }
+                        }
+                    }
                     if (player.hasReallyFinished()) {
                         if (UserPreferences.autoplay) {
                             playNextEpisodeAcrossSeasons(autoplay = true)
@@ -1124,7 +1170,6 @@ class PlayerMobileFragment : Fragment() {
             
             val watchItem: WatchItem? = when (videoType) {
                 is Video.Type.Movie -> {
-                    // Try cache first, then DB
                     var movie = if (provider != null) {
                         UserDataCache.read(requireContext(), provider)?.continueWatchingMovies
                             ?.find { it.id == videoType.id }?.toMovie()
@@ -1132,7 +1177,6 @@ class PlayerMobileFragment : Fragment() {
                     movie ?: database.movieDao().getById(videoType.id)
                 }
                 is Video.Type.Episode -> {
-                    // Try cache first, then DB
                     var episode = if (provider != null) {
                         UserDataCache.read(requireContext(), provider)?.continueWatchingEpisodes
                             ?.find { it.id == videoType.id }?.toEpisode()
@@ -1162,7 +1206,6 @@ class PlayerMobileFragment : Fragment() {
             )
         }
     }
-
 
     private fun ExoPlayer.hasStarted(): Boolean {
         return (this.currentPosition > (this.duration * 0.005) || this.currentPosition > 20.seconds.inWholeMilliseconds)
@@ -1196,7 +1239,7 @@ class PlayerMobileFragment : Fragment() {
             is Video.Type.Movie -> args.subtitle
             is Video.Type.Episode -> {
                 val episodeTitle = videoType.title?.takeUnless { it.isBlank() } ?: args.subtitle
-                "S${videoType.season.number} E${videoType.number}  \u2022  $episodeTitle"
+                "S${videoType.season.number} E${videoType.number}  •  $episodeTitle"
             }
         }
     }
@@ -1246,6 +1289,7 @@ class PlayerMobileFragment : Fragment() {
         episodeDao.save(persistedNextEpisode)
         UserDataCache.syncEpisodeToCache(requireContext(), provider, persistedNextEpisode)
     }
+
     private fun startProgressHandler() {
         progressHandler = android.os.Handler(android.os.Looper.getMainLooper())
         progressRunnable = Runnable {
@@ -1277,8 +1321,6 @@ class PlayerMobileFragment : Fragment() {
         }
     }
 
-
-
     override fun onPause() {
         super.onPause()
         stopProgressHandler()
@@ -1291,9 +1333,9 @@ class PlayerMobileFragment : Fragment() {
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
                 if (extraBuffering) EXTRA_MIN_BUFFER_MS else NORMAL_MIN_BUFFER_MS,
-                    if (extraBuffering) EXTRA_MAX_BUFFER_MS else NORMAL_MAX_BUFFER_MS,
-                    if (extraBuffering) EXTRA_BUFFER_FOR_PLAYBACK_MS else NORMAL_BUFFER_FOR_PLAYBACK_MS,
-                    if (extraBuffering) EXTRA_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS else NORMAL_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+                if (extraBuffering) EXTRA_MAX_BUFFER_MS else NORMAL_MAX_BUFFER_MS,
+                if (extraBuffering) EXTRA_BUFFER_FOR_PLAYBACK_MS else NORMAL_BUFFER_FOR_PLAYBACK_MS,
+                if (extraBuffering) EXTRA_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS else NORMAL_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
             )
             .build()
 
@@ -1312,7 +1354,7 @@ class PlayerMobileFragment : Fragment() {
         return baseBuilder
             .setSeekBackIncrementMs(10_000)
             .setSeekForwardIncrementMs(10_000)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory).experimentalParseSubtitlesDuringExtraction(false))
+            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
             .setLoadControl(loadControl)
             .build()
     }
@@ -1349,9 +1391,9 @@ class PlayerMobileFragment : Fragment() {
         }
     }
 
-    
     private fun selectInitialServer(servers: List<Video.Server>): Video.Server {
         if (UserPreferences.preferDubbedPlayback) {
+            ServerLanguage.preferredPortugueseDub(servers)?.let { return it }
             servers.firstOrNull(::isPlayerFlixServer)?.let { return it }
         }
 

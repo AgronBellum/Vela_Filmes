@@ -17,6 +17,7 @@ import com.streamflixreborn.streamflix.R
 import com.streamflixreborn.streamflix.utils.OpenSubtitles
 import com.streamflixreborn.streamflix.utils.mediaServers
 import com.streamflixreborn.streamflix.utils.SubDL
+import com.streamflixreborn.streamflix.utils.StremioSubtitles
 import com.streamflixreborn.streamflix.utils.UserPreferences
 import com.streamflixreborn.streamflix.utils.dp
 import com.streamflixreborn.streamflix.utils.findClosest
@@ -79,6 +80,11 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
             Settings.Subtitle.SubDLSubtitles.init(value)
             field = value
         }
+    var stremioSubtitles: List<StremioSubtitles.Subtitle> = listOf()
+        set(value) {
+            Settings.Subtitle.StremioSubtitles.init(value)
+            field = value
+        }
 
     protected var currentSettings = Setting.MAIN
 
@@ -100,6 +106,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
         CAPTION_STYLE_MARGIN,
         OPEN_SUBTITLES,
         SUBDL,
+        STREMIO,
         SPEED,
         EXTRA_BUFFERING,
         SOFTWARE_DECODER,
@@ -363,6 +370,11 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
     protected var onSubDLSubtitleSelected: ((Settings.Subtitle.SubDLSubtitles.Subtitle) -> Unit)? = null
     fun setOnSubDLSubtitleSelectedListener(onSubDLSubtitleSelected: (Settings.Subtitle.SubDLSubtitles.Subtitle) -> Unit) {
         this.onSubDLSubtitleSelected = onSubDLSubtitleSelected
+    }
+
+    protected var onStremioSubtitleSelected: ((Settings.Subtitle.StremioSubtitles.Subtitle) -> Unit)? = null
+    fun setOnStremioSubtitleSelectedListener(onStremioSubtitleSelected: (Settings.Subtitle.StremioSubtitles.Subtitle) -> Unit) {
+        this.onStremioSubtitleSelected = onStremioSubtitleSelected
     }
 
     protected var onSpeedSelected: ((Settings.Speed) -> Unit) =
@@ -810,10 +822,10 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                     }
                     list.add(LocalSubtitles)
                     list.add(OpenSubtitles)
-                    // Add SubDL only if an API key is configured
                     if (UserPreferences.subdlApiKey.isNotEmpty()) {
                         list.add(SubDLSubtitles)
                     }
+                    list.add(StremioSubtitles)
                 }
             }
 
@@ -1352,16 +1364,24 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
                         return when {
                             values.any {
+                                it.contains("ai-translated") || it.contains("translated") ||
+                                    it.contains("translation") || it.contains(" ia")
+                            } -> 3
+                            values.any {
                                 it == "pt-br" ||
                                     it == "pt_br" ||
+                                    it == "pb" ||
                                     it.contains("brazil") ||
                                     it.contains("brasil") ||
                                     it.contains("portuguese-br") ||
-                                    it.contains("portuguese br")
+                                    it.contains("portuguese br") ||
+                                    it.contains("português-br") ||
+                                    it.contains("português br")
                             } -> 0
                             values.any {
-                                it == "pt" ||
-                                    it.contains("portugu")
+                                it == "pt-pt" ||
+                                    it == "pt_pt" ||
+                                    it.contains("portugal")
                             } -> 1
                             else -> 2
                         }
@@ -1371,6 +1391,51 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 class Subtitle(
                     val subDLSubtitle: com.streamflixreborn.streamflix.utils.SubDL.Subtitle
                 ) : SubDLSubtitles()
+            }
+
+            sealed class StremioSubtitles : Item {
+
+                companion object : Settings.Subtitle() {
+                    val list = mutableListOf<Subtitle>()
+
+                    fun init(stremioSubtitles: List<com.streamflixreborn.streamflix.utils.StremioSubtitles.Subtitle>) {
+                        list.clear()
+                        list.addAll(stremioSubtitles.withIndex().sortedWith(compareBy(
+                            { stremioSubtitlePriority(it.value) },
+                            { it.index }
+                        )).map {
+                            Subtitle(it.value)
+                        })
+                    }
+
+                    private fun stremioSubtitlePriority(subtitle: com.streamflixreborn.streamflix.utils.StremioSubtitles.Subtitle): Int {
+                        val values = listOfNotNull(
+                            subtitle.lang,
+                            subtitle.id,
+                            subtitle.url,
+                        ).map { it.lowercase() }
+
+                        return when {
+                            values.any {
+                                it.contains("ai-translated") || it.contains("translated") ||
+                                    it.contains("translation") || it.contains(" ia")
+                            } -> 3
+                            values.any {
+                                it == "pt-br" || it == "pt_br" || it == "pb" ||
+                                    it.contains("brazil") || it.contains("brasil") ||
+                                    it.contains("portuguese-br") || it.contains("portuguese br")
+                            } -> 0
+                            values.any {
+                                it == "pt-pt" || it == "pt_pt" || it.contains("portugal")
+                            } -> 1
+                            else -> 2
+                        }
+                    }
+                }
+
+                class Subtitle(
+                    val stremioSubtitle: com.streamflixreborn.streamflix.utils.StremioSubtitles.Subtitle
+                ) : StremioSubtitles()
             }
         }
 

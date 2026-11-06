@@ -30,8 +30,8 @@ android {
         applicationId "com.streamflixreborn.streamflix"
         minSdk 21
         targetSdk 35
-        versionCode 143
-        versionName "1.7.114"
+        versionCode 147
+        versionName "1.7.117"
 
         buildConfigField "String", "APP_LAYOUT", "\"${properties.getProperty("APP_LAYOUT")}\""
         buildConfigField "String", "TMDB_API_KEY", "\"${properties.getProperty("TMDB_API_KEY")}\""
@@ -79,7 +79,11 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.media3:media3-datasource-okhttp:1.8.0'
+    // 1.8.1 is the newest stable Media3 line that keeps the app's Android 5.0
+    // (API 21) support. Media3 1.9+ requires API 23.
+    def media3Version = '1.8.1'
+
+    implementation "androidx.media3:media3-datasource-okhttp:$media3Version"
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     implementation 'androidx.navigation:navigation-fragment-ktx:2.8.8'
@@ -93,11 +97,13 @@ dependencies {
     kapt 'com.github.bumptech.glide:compiler:4.16.0'
     implementation 'com.github.bumptech.glide:okhttp3-integration:4.16.0'
 
-    implementation 'androidx.media3:media3-exoplayer:1.8.0'
-    implementation 'androidx.media3:media3-exoplayer-dash:1.8.0'
-    implementation 'androidx.media3:media3-exoplayer-hls:1.8.0'
-    implementation 'androidx.media3:media3-session:1.8.0'
-    implementation 'androidx.media3:media3-ui:1.8.0'
+    implementation "androidx.media3:media3-exoplayer:$media3Version"
+    implementation "androidx.media3:media3-exoplayer-dash:$media3Version"
+    implementation "androidx.media3:media3-exoplayer-hls:$media3Version"
+    implementation "androidx.media3:media3-exoplayer-rtsp:$media3Version"
+    implementation "androidx.media3:media3-exoplayer-smoothstreaming:$media3Version"
+    implementation "androidx.media3:media3-session:$media3Version"
+    implementation "androidx.media3:media3-ui:$media3Version"
 
     implementation 'com.squareup.retrofit2:retrofit:2.11.0'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'

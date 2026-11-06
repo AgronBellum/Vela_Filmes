@@ -44,6 +44,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
     private val windowOpacityAdapter = SettingsAdapter(this, Settings.Subtitle.Style.WindowOpacity.list)
     private val openSubtitlesAdapter = SettingsAdapter(this, Settings.Subtitle.OpenSubtitles.list)
     private val subDLAdapter = SettingsAdapter(this, Settings.Subtitle.SubDLSubtitles.list)
+    private val stremioAdapter = SettingsAdapter(this, Settings.Subtitle.StremioSubtitles.list)
     private val speedAdapter = SettingsAdapter(this, Settings.Speed.list)
     private val extraBufferingAdapter = SettingsAdapter(this, Settings.ExtraBuffering.list)
     private val softwareDecoderAdapter = SettingsAdapter(this, Settings.SoftwareDecoder.list)
@@ -92,6 +93,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
             Setting.CAPTION_STYLE_MARGIN -> displaySettings(Setting.CAPTION_STYLE)
             Setting.OPEN_SUBTITLES -> displaySettings(Setting.SUBTITLES)
             Setting.SUBDL -> displaySettings(Setting.SUBTITLES)
+            Setting.STREMIO -> displaySettings(Setting.SUBTITLES)
         }
         return true
     }
@@ -102,7 +104,6 @@ class PlayerSettingsTvView @JvmOverloads constructor(
             else -> super.focusSearch(focused, direction)
         }
     }
-
 
     fun show() = showSetting(Setting.MAIN)
 
@@ -142,6 +143,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                 Setting.CAPTION_STYLE_WINDOW_OPACITY -> context.getString(R.string.player_settings_caption_style_window_opacity_title)
                 Setting.OPEN_SUBTITLES -> context.getString(R.string.player_settings_open_subtitles_title)
                 Setting.SUBDL -> context.getString(R.string.player_settings_subdl_title)
+                Setting.STREMIO -> "Stremio"
                 Setting.SPEED -> context.getString(R.string.player_settings_speed_title)
                 Setting.EXTRA_BUFFERING -> context.getString(R.string.player_settings_extra_buffer_title)
                 Setting.SOFTWARE_DECODER -> context.getString(R.string.player_settings_software_decoder_title)
@@ -175,6 +177,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
             Setting.CAPTION_STYLE_WINDOW_OPACITY -> windowOpacityAdapter
             Setting.OPEN_SUBTITLES -> openSubtitlesAdapter
             Setting.SUBDL -> subDLAdapter
+            Setting.STREMIO -> stremioAdapter
             Setting.SPEED -> speedAdapter
             Setting.EXTRA_BUFFERING -> extraBufferingAdapter
             Setting.SOFTWARE_DECODER -> softwareDecoderAdapter
@@ -204,7 +207,6 @@ class PlayerSettingsTvView @JvmOverloads constructor(
     private fun updateSubtitleDelayValue() {
         binding.tvSubtitleDelayValue.text = Settings.Subtitle.OffsetAdjustment.formattedValue()
     }
-
 
     private class SettingsAdapter(
         private val settingsView: PlayerSettingsTvView,
@@ -278,7 +280,6 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                                     settingsView.displaySettings(Setting.CAPTION_STYLE)
                                 }
 
-
                                 is Settings.Subtitle.OffsetAdjustment -> {
                                     settingsView.onSubtitleOffsetSelected.invoke(item)
                                     settingsView.subtitlesAdapter.notifyDataSetChanged()
@@ -300,6 +301,9 @@ class PlayerSettingsTvView @JvmOverloads constructor(
 
                                 Settings.Subtitle.SubDLSubtitles -> {
                                     settingsView.displaySettings(Setting.SUBDL)
+                                }
+                                Settings.Subtitle.StremioSubtitles -> {
+                                    settingsView.displaySettings(Setting.STREMIO)
                                 }
                             }
                         }
@@ -395,13 +399,16 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                             settingsView.onSubDLSubtitleSelected?.invoke(item)
                             settingsView.hide()
                         }
+                        
+                        is Settings.Subtitle.StremioSubtitles.Subtitle -> {
+                            settingsView.onStremioSubtitleSelected?.invoke(item)
+                            settingsView.hide()
+                        }
 
                         is Settings.Speed -> {
                             settingsView.onSpeedSelected.invoke(item)
                             settingsView.hide()
                         }
-
-
 
                         is Settings.ExtraBuffering -> {
                             settingsView.onExtraBufferingSelected.invoke(item)
@@ -446,7 +453,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                                     context,
                                     R.drawable.ic_player_settings_playback_speed
                                 )
-                                )
+                            )
 
                             Settings.ExtraBuffering -> setImageDrawable(
                                 ContextCompat.getDrawable(
@@ -536,7 +543,6 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                                     track.height
                                 )
                             }
-
                             else -> context.getString(R.string.player_settings_quality_auto)
                         }
                         is Settings.Quality.VideoTrackInformation -> context.getString(
@@ -553,6 +559,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                         Settings.Subtitle.LocalSubtitles -> context.getString(R.string.player_settings_local_subtitles_label)
                         Settings.Subtitle.OpenSubtitles -> context.getString(R.string.player_settings_open_subtitles_label)
                         Settings.Subtitle.SubDLSubtitles -> context.getString(R.string.player_settings_subdl_label)
+                        Settings.Subtitle.StremioSubtitles -> "Stremio"
                     }
 
                     is Settings.Subtitle.Style -> when (item) {
@@ -570,31 +577,19 @@ class PlayerSettingsTvView @JvmOverloads constructor(
 
                     is Settings.Subtitle.Style.FontColor -> context.getString(item.stringId)
                     is Settings.Subtitle.Style.Margin -> item.value.toString()
-
                     is Settings.Subtitle.Style.TextSize -> context.getString(item.stringId)
-
                     is Settings.Subtitle.Style.FontOpacity -> context.getString(item.stringId)
-
                     is Settings.Subtitle.Style.EdgeStyle -> context.getString(item.stringId)
-
                     is Settings.Subtitle.Style.BackgroundColor -> context.getString(item.stringId)
-
                     is Settings.Subtitle.Style.BackgroundOpacity -> context.getString(item.stringId)
-
                     is Settings.Subtitle.Style.WindowColor -> context.getString(item.stringId)
-
                     is Settings.Subtitle.Style.WindowOpacity -> context.getString(item.stringId)
-
                     is Settings.Subtitle.OpenSubtitles.Subtitle -> item.openSubtitle.subFileName
-
                     is Settings.Subtitle.SubDLSubtitles.Subtitle -> item.subDLSubtitle.releaseName ?: item.subDLSubtitle.name
-
+                    is Settings.Subtitle.StremioSubtitles.Subtitle -> item.stremioSubtitle.id
                     is Settings.Speed -> context.getString(item.stringId)
-
                     is Settings.ExtraBuffering -> context.getString(item.stringId)
-
                     is Settings.SoftwareDecoder -> context.getString(item.stringId)
-
                     is Settings.Server -> item.name
 
                     else -> ""
@@ -652,6 +647,8 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                     is Settings.Subtitle.OpenSubtitles.Subtitle -> item.openSubtitle.languageName
 
                     is Settings.Subtitle.SubDLSubtitles.Subtitle -> item.subDLSubtitle.lang?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() } ?: ""
+                    
+                    is Settings.Subtitle.StremioSubtitles.Subtitle -> item.stremioSubtitle.lang ?: ""
 
                     else -> ""
                 }
@@ -777,6 +774,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                         Settings.Subtitle.LocalSubtitles -> View.VISIBLE
                         Settings.Subtitle.OpenSubtitles -> View.VISIBLE
                         Settings.Subtitle.SubDLSubtitles -> View.VISIBLE
+                        Settings.Subtitle.StremioSubtitles -> View.VISIBLE
                     }
 
                     is Settings.Subtitle.Style -> when (item) {

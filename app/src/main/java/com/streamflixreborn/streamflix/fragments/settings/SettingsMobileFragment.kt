@@ -376,7 +376,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             startActivity(
                 Intent(
                     Intent.ACTION_VIEW,
-                    Uri.parse("https://github.com/streamflix-reborn/streamflix")
+                    Uri.parse("https://github.com/AgronBellum/Vela_Filmes")
                 )
             )
             true

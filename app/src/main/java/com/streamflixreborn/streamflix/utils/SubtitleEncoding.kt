@@ -7,6 +7,7 @@ import androidx.core.net.toUri
 import com.streamflixreborn.streamflix.models.Video
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -62,6 +63,39 @@ object SubtitleEncoding {
         }
     }
 
+    suspend fun normalizeHlsSubtitles(
+        context: Context,
+        source: String,
+        headers: Map<String, String> = emptyMap()
+    ): String = withContext(Dispatchers.IO) {
+        if (!source.startsWith("http", ignoreCase = true) || !source.contains(".m3u8", ignoreCase = true)) {
+            return@withContext source
+        }
+
+        runCatching {
+            val playlist = String(downloadSubtitle(source, headers), StandardCharsets.UTF_8)
+            if (!playlist.contains("#EXTM3U") || !playlist.contains("TYPE=SUBTITLES")) {
+                return@runCatching source
+            }
+
+            val rewritten = rewriteHlsPlaylist(
+                context = context,
+                playlistUrl = source,
+                playlist = playlist,
+                headers = headers,
+                subtitlePlaylist = false
+            )
+
+            if (rewritten == playlist) {
+                source
+            } else {
+                writeCacheText(context, "hls-master", "m3u8", rewritten).toUri().toString()
+            }
+        }.onFailure {
+            Log.w("SubtitleEncoding", "Keeping original HLS playlist: ${it.message}")
+        }.getOrDefault(source)
+    }
+
     fun isTextSubtitleFileName(fileName: String): Boolean =
         File(fileName).extension.lowercase() in textSubtitleExtensions
 
@@ -92,6 +126,96 @@ object SubtitleEncoding {
         )
         output.writeText(text, StandardCharsets.UTF_8)
         return output.toUri()
+    }
+
+    private fun rewriteHlsPlaylist(
+        context: Context,
+        playlistUrl: String,
+        playlist: String,
+        headers: Map<String, String>,
+        subtitlePlaylist: Boolean
+    ): String {
+        var changed = false
+        val shouldRewriteMediaUris = !subtitlePlaylist && playlist.lineSequence().any {
+            it.startsWith("#EXT-X-MEDIA") && it.contains("TYPE=SUBTITLES") && it.contains("URI=")
+        }
+        val rewritten = playlist.lineSequence().map { line ->
+            when {
+                line.startsWith("#EXT-X-MEDIA") && line.contains("TYPE=SUBTITLES") && line.contains("URI=") -> {
+                    replaceUriAttribute(line) { subtitleUri ->
+                        changed = true
+                        normalizeHlsSubtitleReference(context, playlistUrl, subtitleUri, headers)
+                    }
+                }
+
+                subtitlePlaylist && line.isNotBlank() && !line.startsWith("#") -> {
+                    changed = true
+                    normalizeHlsSubtitleReference(context, playlistUrl, line.trim(), headers)
+                }
+
+                shouldRewriteMediaUris && line.isNotBlank() && !line.startsWith("#") -> {
+                    resolveUrl(playlistUrl, line.trim())
+                }
+
+                else -> line
+            }
+        }.joinToString("\n")
+
+        return if (changed) rewritten else playlist
+    }
+
+    private fun normalizeHlsSubtitleReference(
+        context: Context,
+        playlistUrl: String,
+        reference: String,
+        headers: Map<String, String>
+    ): String {
+        val subtitleUrl = resolveUrl(playlistUrl, reference)
+        val bytes = downloadSubtitle(subtitleUrl, headers)
+        val fileName = subtitleUrl.substringBefore("?").substringAfterLast("/")
+
+        return if (fileName.endsWith(".m3u8", ignoreCase = true) || looksLikePlaylist(bytes)) {
+            val subtitlePlaylist = String(bytes, StandardCharsets.UTF_8)
+            val rewritten = rewriteHlsPlaylist(
+                context = context,
+                playlistUrl = subtitleUrl,
+                playlist = subtitlePlaylist,
+                headers = headers,
+                subtitlePlaylist = true
+            )
+            writeCacheText(context, "hls-subtitles", "m3u8", rewritten).toUri().toString()
+        } else {
+            val extension = File(fileName).extension.ifBlank { "vtt" }
+            val normalizedText = decode(bytes)
+            writeCacheText(context, "hls-subtitle", extension, normalizedText).toUri().toString()
+        }
+    }
+
+    private fun replaceUriAttribute(line: String, transform: (String) -> String): String {
+        val uriRegex = Regex("""URI="([^"]+)"""")
+        return uriRegex.replace(line) { match ->
+            "URI=\"${transform(match.groupValues[1])}\""
+        }
+    }
+
+    private fun resolveUrl(baseUrl: String, reference: String): String {
+        if (reference.startsWith("http", ignoreCase = true)) return reference
+        if (reference.startsWith("//")) {
+            val scheme = baseUrl.toHttpUrlOrNull()?.scheme ?: "https"
+            return "$scheme:$reference"
+        }
+        return baseUrl.toHttpUrlOrNull()?.resolve(reference)?.toString() ?: reference
+    }
+
+    private fun writeCacheText(context: Context, prefix: String, extension: String, text: String): File {
+        val output = File.createTempFile(prefix, ".$extension", context.cacheDir)
+        output.writeText(text, StandardCharsets.UTF_8)
+        return output
+    }
+
+    private fun looksLikePlaylist(bytes: ByteArray): Boolean {
+        val prefix = String(bytes.copyOfRange(0, bytes.size.coerceAtMost(256)), StandardCharsets.UTF_8)
+        return prefix.contains("#EXTM3U")
     }
 
     private fun downloadSubtitle(url: String, headers: Map<String, String>): ByteArray {

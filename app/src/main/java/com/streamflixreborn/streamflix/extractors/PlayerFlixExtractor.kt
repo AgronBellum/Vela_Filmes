@@ -34,8 +34,8 @@ class PlayerFlixExtractor : Extractor() {
     override val name = "PlayerFlix"
     override val mainUrl = PLAYERFLIX_URL
     override val aliasUrls = listOf(
-        "https://watchplayer.xyz",
         "https://embedplayer2.xyz",
+        "https://embed-api.clickhost.xyz",
         "https://xn--kcksk7a2bl5le7b6doc1h3f.com",
     )
 
@@ -109,6 +109,8 @@ class PlayerFlixExtractor : Extractor() {
             .header("User-Agent", USER_AGENT)
             .header("Referer", referer)
             .header("Accept-Language", "pt-BR,pt;q=0.9,en;q=0.8")
+            .header("Cache-Control", "no-cache")
+            .header("Pragma", "no-cache")
             .build()
 
         client.newCall(request).execute().use { response ->
@@ -123,8 +125,8 @@ class PlayerFlixExtractor : Extractor() {
     }
 
     private fun ajaxUrl(videoType: Video.Type): String = when (videoType) {
-        is Video.Type.Movie -> "$PLAYERFLIX_URL/pages/ajax.php?id=${videoType.id}&type=movie"
-        is Video.Type.Episode -> "$PLAYERFLIX_URL/pages/ajax.php?id=${videoType.tvShow.id}&type=tv&season=${videoType.season.number}&episode=${videoType.number}"
+        is Video.Type.Movie -> "$PLAYERFLIX_URL/pages/ajax.php?id=${videoType.id}&type=movie&_=${System.currentTimeMillis()}"
+        is Video.Type.Episode -> "$PLAYERFLIX_URL/pages/ajax.php?id=${videoType.tvShow.id}&type=tv&season=${videoType.season.number}&episode=${videoType.number}&_=${System.currentTimeMillis()}"
     }
 
     private fun decodeBase64(value: String): String? = runCatching {
@@ -134,7 +136,7 @@ class PlayerFlixExtractor : Extractor() {
     private suspend fun resolveDirectStream(link: String): DirectStream? = withContext(Dispatchers.IO) {
         runCatching {
             when {
-                link.contains("watchplayer.xyz") -> extractWatchPlayerDirect(link)
+                link.contains("https://embed-api.clickhost.xyz") -> extractWatchPlayerDirect(link)
                 link.contains("embedplayer2.xyz") || link.contains("xn--kcksk7a2bl5le7b6doc1h3f.com") -> extractFirePlayerDirect(link)
                 else -> null
             }
@@ -154,7 +156,7 @@ class PlayerFlixExtractor : Extractor() {
             .add("action", "getPlayer")
             .add("video_id", videoId)
             .build()
-        val response = postBlocking("https://watchplayer.xyz/api", body, link)
+        val response = postBlocking("https://embed-api.clickhost.xyz/#api", body, link)
         val json = JSONObject(response)
         val data = json.optJSONObject("data")
         val videoUrl = normalizeUrl(
@@ -194,6 +196,8 @@ class PlayerFlixExtractor : Extractor() {
             .header("User-Agent", USER_AGENT)
             .header("Referer", referer)
             .header("Accept-Language", "pt-BR,pt;q=0.9,en;q=0.8")
+            .header("Cache-Control", "no-cache")
+            .header("Pragma", "no-cache")
             .build()
 
         client.newCall(request).execute().use { response ->
@@ -212,6 +216,8 @@ class PlayerFlixExtractor : Extractor() {
             .header("X-Requested-With", "XMLHttpRequest")
             .header("Accept", "application/json, text/javascript, */*; q=0.01")
             .header("Accept-Language", "pt-BR,pt;q=0.9,en;q=0.8")
+            .header("Cache-Control", "no-cache")
+            .header("Pragma", "no-cache")
             .build()
 
         client.newCall(request).execute().use { response ->
@@ -317,14 +323,14 @@ class PlayerFlixExtractor : Extractor() {
     }
 
     private fun refererFor(url: String): String = when {
-        url.contains("watchplayer.xyz") -> "$PLAYERFLIX_URL/"
+        url.contains("embed-api.clickhost.xyz") -> "$PLAYERFLIX_URL/"
         url.contains("embedplayer2.xyz") -> "$PLAYERFLIX_URL/"
         url.contains("xn--kcksk7a2bl5le7b6doc1h3f.com") -> "$PLAYERFLIX_URL/"
         else -> "$PLAYERFLIX_URL/"
     }
 
     private fun originFor(url: String): String = when {
-        url.contains("watchplayer.xyz") -> "https://watchplayer.xyz"
+        url.contains("embed-api.clickhost.xyz") -> "https://embed-api.clickhost.xyz/#api"
         url.contains("embedplayer2.xyz") -> "https://embedplayer2.xyz"
         url.contains("xn--kcksk7a2bl5le7b6doc1h3f.com") -> "https://xn--kcksk7a2bl5le7b6doc1h3f.com"
         else -> PLAYERFLIX_URL

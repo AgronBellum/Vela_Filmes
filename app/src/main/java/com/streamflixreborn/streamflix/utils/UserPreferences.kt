@@ -294,7 +294,7 @@ object UserPreferences {
     }
 
     var subdlApiKey: String
-        get() = Key.SUBDL_API_KEY.getString() ?: ""
+        get() = Key.SUBDL_API_KEY.getString() ?: "subdl_DI6BVA7NdP2cQRz-iASlh6tDan7rtcWuuuK9yQKT_Fw"
         set(value) {
             Key.SUBDL_API_KEY.setString(value)
         }

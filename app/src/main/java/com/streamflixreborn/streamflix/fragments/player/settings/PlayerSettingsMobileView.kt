@@ -42,6 +42,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
     private val windowOpacityAdapter = SettingsAdapter(this, Settings.Subtitle.Style.WindowOpacity.list)
     private val openSubtitlesAdapter = SettingsAdapter(this, Settings.Subtitle.OpenSubtitles.list)
     private val subDLAdapter = SettingsAdapter(this, Settings.Subtitle.SubDLSubtitles.list)
+    private val stremioSubtitlesAdapter = SettingsAdapter(this, Settings.Subtitle.StremioSubtitles.list)
     private val speedAdapter = SettingsAdapter(this, Settings.Speed.list)
     private val extraBufferingAdapter = SettingsAdapter(this, Settings.ExtraBuffering.list)
     private val softwareDecoderAdapter = SettingsAdapter(this, Settings.SoftwareDecoder.list)
@@ -88,13 +89,13 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
             Setting.CAPTION_STYLE_MARGIN -> displaySettings(Setting.CAPTION_STYLE)
             Setting.OPEN_SUBTITLES -> displaySettings(Setting.SUBTITLES)
             Setting.SUBDL -> displaySettings(Setting.SUBTITLES)
+            Setting.STREMIO -> displaySettings(Setting.SUBTITLES)
         }
         return true
     }
 
     fun show() {
         this.visibility = View.VISIBLE
-
         displaySettings(Setting.MAIN)
     }
 
@@ -123,6 +124,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                 Setting.CAPTION_STYLE_WINDOW_OPACITY -> context.getString(R.string.player_settings_caption_style_window_opacity_title)
                 Setting.OPEN_SUBTITLES -> context.getString(R.string.player_settings_open_subtitles_title)
                 Setting.SUBDL -> context.getString(R.string.player_settings_subdl_title)
+                Setting.STREMIO -> "Stremio Subtitles"
                 Setting.SPEED -> context.getString(R.string.player_settings_speed_title)
                 Setting.EXTRA_BUFFERING -> context.getString(R.string.player_settings_extra_buffer_title)
                 Setting.SOFTWARE_DECODER -> context.getString(R.string.player_settings_software_decoder_title)
@@ -153,6 +155,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
             Setting.CAPTION_STYLE_WINDOW_OPACITY -> windowOpacityAdapter
             Setting.OPEN_SUBTITLES -> openSubtitlesAdapter
             Setting.SUBDL -> subDLAdapter
+            Setting.STREMIO -> stremioSubtitlesAdapter
             Setting.SPEED -> speedAdapter
             Setting.EXTRA_BUFFERING -> extraBufferingAdapter
             Setting.SOFTWARE_DECODER -> softwareDecoderAdapter
@@ -167,7 +170,6 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
     fun hide() {
         this.visibility = View.GONE
     }
-
 
     private class SettingsAdapter(
         private val settingsView: PlayerSettingsMobileView,
@@ -242,7 +244,6 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                                     settingsView.displaySettings(Setting.CAPTION_STYLE)
                                 }
 
-
                                 is Settings.Subtitle.OffsetAdjustment -> {
                                     settingsView.onSubtitleOffsetSelected.invoke(item)
                                     settingsView.subtitlesAdapter.notifyDataSetChanged()
@@ -264,6 +265,10 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
 
                                 Settings.Subtitle.SubDLSubtitles -> {
                                     settingsView.displaySettings(Setting.SUBDL)
+                                }
+
+                                Settings.Subtitle.StremioSubtitles -> {
+                                    settingsView.displaySettings(Setting.STREMIO)
                                 }
                             }
                         }
@@ -357,6 +362,11 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
 
                         is Settings.Subtitle.SubDLSubtitles.Subtitle -> {
                             settingsView.onSubDLSubtitleSelected?.invoke(item)
+                            settingsView.displaySettings(Setting.MAIN)
+                        }
+
+                        is Settings.Subtitle.StremioSubtitles.Subtitle -> {
+                            settingsView.onStremioSubtitleSelected?.invoke(item)
                             settingsView.displaySettings(Setting.MAIN)
                         }
 
@@ -465,7 +475,6 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                                     track.height
                                 )
                             }
-
                             else -> context.getString(R.string.player_settings_quality_auto)
                         }
                         is Settings.Quality.VideoTrackInformation -> context.getString(
@@ -482,6 +491,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                         Settings.Subtitle.LocalSubtitles -> context.getString(R.string.player_settings_local_subtitles_label)
                         Settings.Subtitle.OpenSubtitles -> context.getString(R.string.player_settings_open_subtitles_label)
                         Settings.Subtitle.SubDLSubtitles -> context.getString(R.string.player_settings_subdl_label)
+                        Settings.Subtitle.StremioSubtitles -> "Stremio Subtitles"
                     }
 
                     is Settings.Subtitle.Style -> when (item) {
@@ -499,35 +509,21 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
 
                     is Settings.Subtitle.Style.FontColor -> context.getString(item.stringId)
                     is Settings.Subtitle.Style.Margin -> item.value.toString()
-
                     is Settings.Subtitle.Style.TextSize -> context.getString(item.stringId)
-
                     is Settings.Subtitle.Style.FontOpacity -> context.getString(item.stringId)
-
                     is Settings.Subtitle.Style.EdgeStyle -> context.getString(item.stringId)
-
                     is Settings.Subtitle.Style.BackgroundColor -> context.getString(item.stringId)
-
                     is Settings.Subtitle.Style.BackgroundOpacity -> context.getString(item.stringId)
-
                     is Settings.Subtitle.Style.WindowColor -> context.getString(item.stringId)
-
                     is Settings.Subtitle.Style.WindowOpacity -> context.getString(item.stringId)
-
                     is Settings.Subtitle.OpenSubtitles.Subtitle -> item.openSubtitle.subFileName
-
                     is Settings.Subtitle.SubDLSubtitles.Subtitle -> item.subDLSubtitle.releaseName ?: item.subDLSubtitle.name
-
+                    is Settings.Subtitle.StremioSubtitles.Subtitle -> item.stremioSubtitle.lang ?: "Português (BR)"
                     is Settings.Speed -> context.getString(item.stringId)
-
                     is Settings.ExtraBuffering -> context.getString(item.stringId)
-
                     is Settings.SoftwareDecoder -> context.getString(item.stringId)
-
                     is Settings.Gestures -> context.getString(item.stringId)
-
                     is Settings.KeepScreenOn -> context.getString(item.stringId)
-
                     is Settings.Server -> item.name
                     else -> ""
                 }
@@ -585,9 +581,8 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                     }
 
                     is Settings.Subtitle.OpenSubtitles.Subtitle -> item.openSubtitle.languageName
-
                     is Settings.Subtitle.SubDLSubtitles.Subtitle -> item.subDLSubtitle.lang?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() } ?: ""
-
+                    is Settings.Subtitle.StremioSubtitles.Subtitle -> item.stremioSubtitle.lang ?: "Portuguese"
                     else -> ""
                 }
                 visibility = when {
@@ -724,6 +719,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                         Settings.Subtitle.LocalSubtitles -> View.VISIBLE
                         Settings.Subtitle.OpenSubtitles -> View.VISIBLE
                         Settings.Subtitle.SubDLSubtitles -> View.VISIBLE
+                        Settings.Subtitle.StremioSubtitles -> View.VISIBLE
                     }
 
                     is Settings.Subtitle.Style -> when (item) {
