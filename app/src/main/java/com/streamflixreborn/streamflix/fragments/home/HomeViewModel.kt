@@ -35,9 +35,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.ConcurrentHashMap
 
-class HomeViewModel(database: AppDatabase) : ViewModel() {
+class HomeViewModel(private val database: AppDatabase) : ViewModel() {
 
     private fun <T> preserveCacheOrder(
         cached: List<T>,
@@ -382,12 +383,96 @@ class HomeViewModel(database: AppDatabase) : ViewModel() {
         try {
             val categories = provider.getHome()
             HomeCacheStore.write(appContext, provider, categories)
-            _state.emit(State.SuccessLoading(categories))
+            _state.emit(State.SuccessLoading(withPersonalizedRecommendations(provider, categories)))
         } catch (e: Exception) {
             Log.e("HomeViewModel", "getHome: ", e)
             if (cachedCategories.isNullOrEmpty()) {
                 _state.emit(State.FailedLoading(e))
             }
+        }
+    }
+
+    /**
+     * The provider already supplies related titles for a movie/show detail page.  We use the
+     * user's recent viewing and favourites as seeds, so the home row adapts without tracking
+     * anything outside the device.  When there is not enough history, current home highlights
+     * complete the row instead of showing an empty section.
+     */
+    private suspend fun withPersonalizedRecommendations(
+        provider: Provider,
+        categories: List<Category>,
+    ): List<Category> = coroutineScope {
+        val watchedMovies = database.movieDao().getWatchingMovies().first()
+        val favoriteMovies = database.movieDao().getFavorites().first()
+        val favoriteShows = database.tvShowDao().getFavorites().first()
+        val watchedEpisodes = database.episodeDao().getWatchingEpisodes().first()
+
+        val movieSeeds = (watchedMovies + favoriteMovies)
+            .distinctBy { it.id }
+            .sortedByDescending { it.watchHistory?.lastEngagementTimeUtcMillis ?: it.favoritedAtMillis ?: 0L }
+            .take(3)
+
+        val tvSeeds = (favoriteShows + watchedEpisodes.mapNotNull { it.tvShow })
+            .distinctBy { it.id }
+            .take(3)
+
+        val watchedIds = (movieSeeds.map { it.id } + tvSeeds.map { it.id }).toSet()
+        val related = (movieSeeds.map { movie ->
+            async {
+                withTimeoutOrNull(8_000) {
+                    provider.getMovie(movie.id).recommendations
+                }.orEmpty()
+            }
+        } + tvSeeds.map { tvShow ->
+            async {
+                withTimeoutOrNull(8_000) {
+                    provider.getTvShow(tvShow.id).recommendations
+                }.orEmpty()
+            }
+        }).awaitAll()
+            .flatten()
+            .mapNotNull { show ->
+                when (show) {
+                    is Movie -> show
+                    is TvShow -> show
+                    else -> null
+                }
+            }
+
+        val weeklyHighlights = categories
+            .firstOrNull { it.name.contains("Tend", ignoreCase = true) }
+            ?.list
+            .orEmpty()
+
+        val personalized = (related + weeklyHighlights)
+            .filter {
+                when (it) {
+                    is Movie -> it.id !in watchedIds
+                    is TvShow -> it.id !in watchedIds
+                    else -> false
+                }
+            }
+            .distinctBy {
+                when (it) {
+                    is Movie -> "movie:${it.id}"
+                    is TvShow -> "tv:${it.id}"
+                    else -> it.toString()
+                }
+            }
+            .take(20)
+
+        if (personalized.isEmpty()) return@coroutineScope categories
+
+        val recommendationCategory = Category(
+            name = "Recomendados para você esta semana",
+            list = personalized,
+        )
+        val insertionIndex = categories.indexOfFirst { it.name.contains("Tend", ignoreCase = true) }
+            .takeIf { it >= 0 }
+            ?: 0
+
+        categories.toMutableList().apply {
+            add(insertionIndex + 1, recommendationCategory)
         }
     }
 
