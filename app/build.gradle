@@ -26,6 +26,12 @@ android {
     def properties = new Properties()
     properties.load(project.rootProject.file('local.properties').newDataInputStream())
 
+    def signingPropertiesFile = project.rootProject.file('keystore.properties')
+    def signingProperties = new Properties()
+    if (signingPropertiesFile.exists()) {
+        signingProperties.load(signingPropertiesFile.newDataInputStream())
+    }
+
     defaultConfig {
         applicationId "com.streamflixreborn.streamflix"
         minSdk 21
@@ -69,6 +75,20 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (signingPropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    signingConfigs {
+        release {
+            if (signingPropertiesFile.exists()) {
+                storeFile project.rootProject.file(signingProperties.getProperty('storeFile'))
+                storePassword signingProperties.getProperty('storePassword')
+                keyAlias signingProperties.getProperty('keyAlias')
+                keyPassword signingProperties.getProperty('keyPassword')
+            }
         }
     }
 
