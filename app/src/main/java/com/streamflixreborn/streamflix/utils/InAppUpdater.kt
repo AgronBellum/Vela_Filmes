@@ -59,7 +59,7 @@ object InAppUpdater {
     fun getCompatibleAsset(release: GitHub.Release): GitHub.Release.Asset? =
         release.assets.firstOrNull { asset ->
             asset.name.endsWith(".apk", ignoreCase = true) && when (BuildConfig.APP_LAYOUT) {
-                "mobile" -> asset.name.endsWith("-mobile.apk", ignoreCase = true)
+                "mobile" -> !asset.name.endsWith("-tv.apk", ignoreCase = true)
                 "tv" -> asset.name.endsWith("-tv.apk", ignoreCase = true)
                 else -> !asset.name.endsWith("-mobile.apk", ignoreCase = true) &&
                     !asset.name.endsWith("-tv.apk", ignoreCase = true)
