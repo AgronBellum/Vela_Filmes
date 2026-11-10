@@ -14,6 +14,7 @@ import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.DefaultTrackNameProvider
 import androidx.media3.ui.SubtitleView
 import com.streamflixreborn.streamflix.R
+import com.streamflixreborn.streamflix.models.Video
 import com.streamflixreborn.streamflix.utils.OpenSubtitles
 import com.streamflixreborn.streamflix.utils.mediaServers
 import com.streamflixreborn.streamflix.utils.SubDL
@@ -42,7 +43,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
             value?.let {
                 Settings.Server.init(it)
-                Settings.Quality.init(it, resources)
+                Settings.Quality.init(it, resources, videoQualities)
                 Settings.Audio.init(it, resources)
                 Settings.Subtitle.init(it, resources)
                 Settings.Speed.refresh(it)
@@ -57,7 +58,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                         Settings.Server.refresh(value)
                     }
                     if (events.contains(Player.EVENT_TRACKS_CHANGED)) {
-                        Settings.Quality.init(value, resources)
+                        Settings.Quality.init(value, resources, videoQualities)
                         Settings.Audio.init(value, resources)
                         Settings.Subtitle.init(value, resources)
                     }
@@ -70,6 +71,19 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
             field = value
         }
     var subtitleView: SubtitleView? = null
+    private var videoQualities: List<Video.Quality> = emptyList()
+
+    fun setVideoQualities(qualities: List<Video.Quality>) {
+        val normalized = qualities
+            .filter { it.source.isNotBlank() }
+            .distinctBy { it.height to it.source }
+            .sortedByDescending { it.height }
+        if (videoQualities.map { it.source } != normalized.map { it.source }) {
+            Settings.Quality.selectedExternalSource = null
+        }
+        videoQualities = normalized
+        player?.let { Settings.Quality.init(it, resources, videoQualities) }
+    }
     var openSubtitles: List<OpenSubtitles.Subtitle> = listOf()
         set(value) {
             Settings.Subtitle.OpenSubtitles.init(value)
@@ -122,6 +136,12 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
             when (quality) {
                 is Settings.Quality.Auto -> {
+                    if (Settings.Quality.externalQualities.isNotEmpty()) {
+                        Settings.Quality.selectedExternalSource = null
+                        UserPreferences.qualityHeight = null
+                        qualitySelectionListener?.invoke(quality)
+                        return
+                    }
                     player.trackSelectionParameters = player.trackSelectionParameters
                         .buildUpon()
                         .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
@@ -143,6 +163,11 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                         )
                         .setForceHighestSupportedBitrate(false)
                         .build()
+                    UserPreferences.qualityHeight = quality.height
+                }
+
+                is Settings.Quality.ExternalVideoQuality -> {
+                    Settings.Quality.selectedExternalSource = quality.quality.source
                     UserPreferences.qualityHeight = quality.height
                 }
             }
@@ -580,13 +605,25 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
             companion object : Settings() {
                 val list = mutableListOf<Quality>()
+                var externalQualities: List<Video.Quality> = emptyList()
+                    private set
+                var selectedExternalSource: String? = null
 
                 val selected: Quality
                     get() = list.find { it.isSelected } ?: Auto
 
-                fun init(player: ExoPlayer, resources: Resources) {
+                fun init(
+                    player: ExoPlayer,
+                    resources: Resources,
+                    qualities: List<Video.Quality> = emptyList(),
+                ) {
                     list.clear()
                     list.add(Auto)
+                    externalQualities = qualities
+                    if (qualities.size > 1) {
+                        list.addAll(qualities.map(::ExternalVideoQuality))
+                        return
+                    }
                     list.addAll(
                         player.currentTracks.groups
                             .filter { it.type == C.TRACK_TYPE_VIDEO }
@@ -640,9 +677,20 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                         .filterIsInstance<VideoTrackInformation>()
                         .find { it.isCurrentlyPlayed }
                 override val isSelected: Boolean
-                    get() = list
+                    get() = if (externalQualities.isNotEmpty()) {
+                        selectedExternalSource == null
+                    } else list
                         .filterIsInstance<VideoTrackInformation>()
                         .none { it.isSelected }
+            }
+
+            class ExternalVideoQuality(
+                val quality: Video.Quality,
+            ) : Quality() {
+                val name: String get() = quality.label
+                val height: Int get() = quality.height
+                override val isSelected: Boolean
+                    get() = selectedExternalSource == quality.source
             }
 
             class VideoTrackInformation(

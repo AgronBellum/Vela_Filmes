@@ -202,7 +202,7 @@ class TvShowViewHolder(
         }
         setPoster(binding.ivTvShowPoster)
         binding.tvTvShowQuality.apply {
-            text = tvShow.quality ?: ""
+            text = tvShow.rating?.let { "★ ${String.format(Locale.ROOT, "%.1f", it)}" } ?: tvShow.quality.orEmpty()
             isVisible = !text.isNullOrEmpty()
         }
         binding.pbTvShowProgress.apply {
@@ -248,7 +248,7 @@ class TvShowViewHolder(
         }
         setPoster(binding.ivTvShowPoster)
         binding.tvTvShowQuality.apply {
-            text = tvShow.quality ?: ""
+            text = tvShow.rating?.let { "★ ${String.format(Locale.ROOT, "%.1f", it)}" } ?: tvShow.quality.orEmpty()
             isVisible = !text.isNullOrEmpty()
         }
         binding.pbTvShowProgress.apply {
@@ -280,7 +280,7 @@ class TvShowViewHolder(
         }
         setPoster(binding.ivTvShowPoster)
         binding.tvTvShowQuality.apply {
-            text = tvShow.quality ?: ""
+            text = tvShow.rating?.let { "★ ${String.format(Locale.ROOT, "%.1f", it)}" } ?: tvShow.quality.orEmpty()
             isVisible = !text.isNullOrEmpty()
         }
         binding.pbTvShowProgress.apply {
@@ -319,7 +319,7 @@ class TvShowViewHolder(
         }
         setPoster(binding.ivTvShowPoster)
         binding.tvTvShowQuality.apply {
-            text = tvShow.quality ?: ""
+            text = tvShow.rating?.let { "★ ${String.format(Locale.ROOT, "%.1f", it)}" } ?: tvShow.quality.orEmpty()
             isVisible = !text.isNullOrEmpty()
         }
         binding.pbTvShowProgress.apply {

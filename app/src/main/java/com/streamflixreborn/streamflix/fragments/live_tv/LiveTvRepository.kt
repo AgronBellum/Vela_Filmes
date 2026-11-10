@@ -37,7 +37,7 @@ object LiveTvRepository {
         .build()
 
     private val cacheMutex = Mutex()
-    private var epgIndexCache: Map<String, String>? = null
+    private var epgIndexCache: List<EpgEntry>? = null
     private var epgIndexLoadedAt: Long = 0L
     private val scheduleCache = mutableMapOf<String, CachedSchedule>()
 
@@ -45,6 +45,13 @@ object LiveTvRepository {
         val id: String,
         val name: String,
         val channels: List<Channel>,
+    )
+
+    data class LoadResult(
+        val categories: List<Category>,
+        val refreshed: Boolean,
+        val published: Boolean,
+        val warning: String? = null,
     )
 
     data class Channel(
@@ -79,16 +86,66 @@ object LiveTvRepository {
         val schedule: Schedule,
     )
 
-    suspend fun loadCategories(): List<Category> = withContext(Dispatchers.IO) {
-        val json = fetch(CHANNELS_URL)
+    private data class EpgEntry(
+        val name: String,
+        val url: String,
+        val normalized: String,
+        val canonical: String,
+    )
+
+    suspend fun loadCategories(): List<Category> =
+        loadCategoriesDetailed(forceRefresh = false).categories
+
+    suspend fun loadCategoriesDetailed(
+        forceRefresh: Boolean,
+        onProgress: (LiveTvChannelUpdater.Progress) -> Unit = {},
+    ): LoadResult = withContext(Dispatchers.IO) {
+        val remoteJson = runCatching { fetch(CHANNELS_URL) }.getOrNull()
+        val cachedJson = LiveTvChannelUpdater.readCachedJson()
+        val availableJson = listOfNotNull(remoteJson, cachedJson)
+            .maxByOrNull(::metadataTimestamp)
+            ?: error("Não foi possível obter a lista de canais")
+
+        val mustRefresh = forceRefresh || isChannelListOutdated(availableJson)
+        val refreshResult = if (mustRefresh) {
+            runCatching { LiveTvChannelUpdater.refresh(onProgress) }.getOrNull()
+        } else {
+            null
+        }
+
+        val selectedJson = refreshResult?.json ?: availableJson
+        LoadResult(
+            categories = parseCategories(selectedJson),
+            refreshed = refreshResult != null,
+            published = refreshResult?.published == true,
+            warning = when {
+                mustRefresh && refreshResult == null -> "Não foi possível atualizar; usando a última lista disponível."
+                refreshResult != null && !refreshResult.published ->
+                    "Canais atualizados neste aparelho, mas o envio ao GitHub falhou: ${refreshResult.publishError.orEmpty()}"
+                else -> null
+            },
+        )
+    }
+
+    private fun parseCategories(json: String): List<Category> {
         val root = JSONObject(json)
         val categoriesObject = root.getJSONObject("categorias")
         val categories = mutableListOf<Category>()
         val keys = categoriesObject.keys()
+        val categoryIds = buildList {
+            while (keys.hasNext()) add(keys.next())
+        }.sortedWith(
+            compareBy<String> {
+                when (it) {
+                    "documentarios" -> 0
+                    "esportes" -> 2
+                    else -> 1
+                }
+            }.thenBy { it }
+        )
         var channelNumber = 1
 
-        while (keys.hasNext()) {
-            val categoryId = keys.next()
+        for (categoryId in categoryIds) {
             val categoryObject = categoriesObject.getJSONObject(categoryId)
             val name = categoryObject.optString("nome", categoryId)
             val channelsArray = categoryObject.optJSONArray("canais") ?: JSONArray()
@@ -115,8 +172,19 @@ object LiveTvRepository {
             if (channels.isNotEmpty()) categories += Category(categoryId, name, channels)
         }
 
-        categories
+        return categories
     }
+
+    private fun metadataTimestamp(json: String): Long = runCatching {
+        val value = JSONObject(json).optJSONObject("metadata")?.optString("date").orEmpty()
+        parseInstant(value)?.toEpochMilli() ?: 0L
+    }.getOrDefault(0L)
+
+    private fun isChannelListOutdated(json: String): Boolean = runCatching {
+        val value = JSONObject(json).optJSONObject("metadata")?.optString("date").orEmpty()
+        val date = parseInstant(value)?.atZone(brazilZone)?.toLocalDate() ?: return@runCatching true
+        date.isBefore(LocalDate.now(brazilZone))
+    }.getOrDefault(true)
 
     suspend fun loadSchedule(channel: Channel): Schedule = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
@@ -171,49 +239,64 @@ object LiveTvRepository {
 
     private suspend fun findEpgUrl(channel: Channel): String? {
         val index = loadEpgIndex()
-        val candidates = buildList {
-            add(normalizeName(channel.name))
-            add(normalizeName(channel.id))
-            add(normalizeBaseChannelName(channel.name))
-            add(normalizeBaseChannelName(channel.id))
-        }.filter { it.isNotBlank() }.distinct()
-
-        candidates.firstNotNullOfOrNull { index[it] }?.let { return it }
-
-        val fuzzy = index.entries.firstOrNull { (key, _) ->
-            val baseKey = normalizeBaseChannelName(key)
-            candidates.any { candidate ->
-                key == candidate || baseKey == candidate ||
-                    key.contains(candidate) || candidate.contains(key) ||
-                    baseKey.contains(candidate) || candidate.contains(baseKey)
+        val candidates = listOf(channel.name, channel.id)
+            .flatMap { value ->
+                listOf(
+                    normalizeName(value) to canonicalChannelName(value),
+                    normalizeBaseChannelName(value) to canonicalChannelName(value),
+                )
             }
+            .filter { (normalized, canonical) -> normalized.isNotBlank() || canonical.isNotBlank() }
+            .distinct()
+
+        // Nunca use apenas "contains": HBO, HBO Family, HBO Plus e HBO Signature sao
+        // canais diferentes. A pontuacao preserva as variantes e ainda aceita grafias como
+        // H&H/Home and Health, HBO+/HBO Plus e sufixos HD/FHD.
+        val match = index.mapNotNull { entry ->
+            val score = candidates.maxOfOrNull { (normalized, canonical) ->
+                when {
+                    canonical.isNotBlank() && entry.canonical == canonical -> 10_000 + canonical.length
+                    normalized.isNotBlank() && entry.normalized == normalized -> 9_000 + normalized.length
+                    else -> 0
+                }
+            } ?: 0
+            entry.takeIf { score > 0 }?.let { it to score }
+        }.maxWithOrNull(compareBy<Pair<EpgEntry, Int>> { it.second }.thenBy { it.first.canonical.length })
+
+        match?.first?.let {
+            Log.d(TAG, "EPG ${channel.name} -> ${it.name}")
+            return it.url
         }
-        return fuzzy?.value
+        return null
     }
 
-    private suspend fun loadEpgIndex(): Map<String, String> {
+    private suspend fun loadEpgIndex(): List<EpgEntry> {
         val now = System.currentTimeMillis()
         cacheMutex.withLock {
             epgIndexCache?.takeIf { now - epgIndexLoadedAt < CACHE_TTL_MS }?.let { return it }
         }
 
         val root = JSONObject(fetch(EPG_INDEX_URL))
-        val map = mutableMapOf<String, String>()
+        val entries = mutableListOf<EpgEntry>()
         val keys = root.keys()
         while (keys.hasNext()) {
             val name = keys.next()
             val url = root.optString(name)
             if (url.isNotBlank()) {
-                map[normalizeName(name)] = url
-                map[normalizeBaseChannelName(name)] = url
+                entries += EpgEntry(
+                    name = name,
+                    url = url,
+                    normalized = normalizeName(name),
+                    canonical = canonicalChannelName(name),
+                )
             }
         }
 
         cacheMutex.withLock {
-            epgIndexCache = map
+            epgIndexCache = entries
             epgIndexLoadedAt = System.currentTimeMillis()
         }
-        return map
+        return entries
     }
 
     private fun parseSchedule(json: String): Schedule {
@@ -318,6 +401,17 @@ object LiveTvRepository {
             .replace("(?i)\\s+ao vivo$".toRegex(), "")
             .trim()
         return normalizeName(noSuffix)
+    }
+
+    private fun canonicalChannelName(value: String): String {
+        val expanded = value
+            .replace("(?i)\\bH\\s*&\\s*H\\b".toRegex(), "Home and Health")
+            .replace("+", " plus ")
+            .replace("&", " and ")
+            .replace("(?i)\\b(full\\s*hd|fhd|uhd|hd|sd|4k)\\b".toRegex(), " ")
+            .replace("(?i)\\b(ao vivo|live)\\b".toRegex(), " ")
+            .replace("(?i)\\btheather\\b".toRegex(), "theater")
+        return normalizeName(expanded)
     }
 }
 

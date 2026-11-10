@@ -27,6 +27,7 @@ class LiveTvTvFragment : Fragment() {
     private var categories: List<LiveTvRepository.Category> = emptyList()
     private var epgJob: Job? = null
     private var categoryEpgJob: Job? = null
+    private var loadJob: Job? = null
 
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale("pt", "BR"))
         .withZone(LiveTvRepository.brazilZone)
@@ -45,6 +46,7 @@ class LiveTvTvFragment : Fragment() {
     override fun onDestroyView() {
         epgJob?.cancel()
         categoryEpgJob?.cancel()
+        loadJob?.cancel()
         _binding = null
         super.onDestroyView()
     }
@@ -64,27 +66,51 @@ class LiveTvTvFragment : Fragment() {
         }
 
         binding.btnLiveTvRetry.setOnClickListener { loadChannels() }
+        binding.btnLiveTvRefresh.setOnClickListener { loadChannels(forceRefresh = true) }
     }
 
-    private fun loadChannels() {
+    private fun loadChannels(forceRefresh: Boolean = false) {
+        if (loadJob?.isActive == true) return
         binding.groupLiveTvError.visibility = View.GONE
         binding.pbLiveTvLoading.visibility = View.VISIBLE
+        binding.pbLiveTvLoading.isIndeterminate = true
+        binding.pbLiveTvLoading.max = 100
+        binding.pbLiveTvLoading.progress = 0
+        binding.btnLiveTvRefresh.isEnabled = false
         binding.tvLiveTvStatus.text = getString(R.string.live_tv_loading)
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            runCatching { LiveTvRepository.loadCategories() }
+        loadJob = viewLifecycleOwner.lifecycleScope.launch {
+            runCatching {
+                LiveTvRepository.loadCategoriesDetailed(forceRefresh) { progress ->
+                    binding.root.post {
+                        if (_binding == null) return@post
+                        binding.pbLiveTvLoading.isIndeterminate = progress.total <= 0
+                        binding.pbLiveTvLoading.progress = progress.percent
+                        binding.tvLiveTvStatus.text = if (progress.total > 0) {
+                            "${progress.message} • ${progress.percent}%"
+                        } else {
+                            progress.message
+                        }
+                    }
+                }
+            }
                 .onSuccess { result ->
-                    categories = result
+                    categories = result.categories
                     binding.pbLiveTvLoading.visibility = View.GONE
-                    binding.tvLiveTvStatus.text = if (result.isEmpty()) getString(R.string.live_tv_empty) else ""
-                    categoryAdapter.submitList(result)
-                    result.firstOrNull()?.let { firstCategory ->
+                    binding.btnLiveTvRefresh.isEnabled = true
+                    binding.tvLiveTvStatus.text = if (result.categories.isEmpty()) getString(R.string.live_tv_empty) else ""
+                    categoryAdapter.submitList(result.categories)
+                    result.warning?.let { warning ->
+                        Toast.makeText(requireContext(), warning, Toast.LENGTH_LONG).show()
+                    }
+                    result.categories.firstOrNull()?.let { firstCategory ->
                         selectCategory(firstCategory)
                         binding.hgvLiveTvCategories.post { binding.hgvLiveTvCategories.requestFocus() }
                     }
                 }
                 .onFailure { error ->
                     binding.pbLiveTvLoading.visibility = View.GONE
+                    binding.btnLiveTvRefresh.isEnabled = true
                     binding.groupLiveTvError.visibility = View.VISIBLE
                     binding.tvLiveTvStatus.text = error.message ?: getString(R.string.live_tv_error)
                 }

@@ -64,7 +64,13 @@ class VixSrcExtractor : Extractor() {
                 service.getSource(currentEmbedPath)
             } else throw e
         }
-        val scriptText = source.body().selectFirst("script")?.data() ?: ""
+        val scriptText = source.body().select("script")
+            .map { it.data() }
+            .firstOrNull { it.contains("window.video") && it.contains("window.masterPlaylist") }
+            .orEmpty()
+        if (scriptText.isBlank()) {
+            throw Exception("VixSrc: configuração do player não encontrada")
+        }
         
         val videoId = scriptText
             .substringAfter("window.video = {", "")
@@ -83,6 +89,10 @@ class VixSrcExtractor : Extractor() {
             .substringAfter("'expires': '", "")
             .substringBefore("',", "")
             .trim()
+
+        if (videoId.isBlank() || token.isBlank() || expires.isBlank()) {
+            throw Exception("VixSrc: parâmetros da playlist incompletos")
+        }
 
         val hasBParam = scriptText
             .substringAfter("url:", "")
@@ -121,6 +131,9 @@ class VixSrcExtractor : Extractor() {
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful && response.body != null) {
                     var playlistContent = response.body!!.string()
+                    if (!playlistContent.trimStart().startsWith("#EXTM3U")) {
+                        throw Exception("VixSrc: playlist inválida")
+                    }
                     val langCode = providerLang
                     val baseUri = response.request.url
                     
@@ -189,10 +202,13 @@ class VixSrcExtractor : Extractor() {
                     
                     val base64Manifest = Base64.encodeToString(finalLines.joinToString("\n").toByteArray(), Base64.NO_WRAP)
                     videoSource = "data:application/vnd.apple.mpegurl;base64,$base64Manifest"
+                } else {
+                    throw Exception("VixSrc: playlist HTTP ${response.code}")
                 }
             }
         } catch (e: Exception) {
             Log.e("VixSrcDebug", "Error in patching: ${e.message}")
+            throw e
         }
 
         return Video(

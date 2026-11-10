@@ -1,9 +1,12 @@
 package com.streamflixreborn.streamflix.fragments.player
 
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.streamflixreborn.streamflix.BuildConfig
+import com.streamflixreborn.streamflix.StreamFlixApp
 import com.streamflixreborn.streamflix.models.Video
 import com.streamflixreborn.streamflix.utils.EpisodeManager
 import com.streamflixreborn.streamflix.utils.OpenSubtitles
@@ -15,10 +18,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -37,14 +43,19 @@ class PlayerViewModel(
     private val _subtitleState = MutableSharedFlow<SubtitleState>()
     val subtitleState: SharedFlow<SubtitleState> = _subtitleState
 
+    private val _serverSearchProgress = MutableStateFlow(0)
+    val serverSearchProgress: Flow<Int> = _serverSearchProgress
+
     private val _playPreviousOrNextEpisode = MutableSharedFlow<Video.Type.Episode>()
     val playPreviousOrNextEpisode: SharedFlow<Video.Type.Episode> = _playPreviousOrNextEpisode
 
     private val serverRequestVersion = AtomicInteger(0)
     private val videoRequestVersion = AtomicInteger(0)
 
-    private val serverValidationSemaphore = Semaphore(3)
-    private val serverValidationTimeoutMs = 15_000L
+    private val isTvDevice = BuildConfig.APP_LAYOUT == "tv" ||
+        StreamFlixApp.instance.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+    private val serverValidationSemaphore = Semaphore(if (isTvDevice) 3 else 2)
+    private val serverValidationTimeoutMs = 8_000L
 
     private var lastVideoType: Video.Type? = null
     private var lastId: String? = null
@@ -117,10 +128,19 @@ class PlayerViewModel(
         Log.d("PlayerViewModel", "Inizio ricerca server per ID: $id")
         lastVideoType = videoType
         lastId = id
+        _serverSearchProgress.value = 0
         _state.emit(State.LoadingServers)
+        val discoveryProgressJob = launch {
+            while (isActive && requestVersion == serverRequestVersion.get()) {
+                delay(350L)
+                _serverSearchProgress.update { current -> (current + 1).coerceAtMost(30) }
+            }
+        }
         try {
             val provider = UserPreferences.currentProvider!!
             val candidates = provider.getServers(id, videoType)
+            discoveryProgressJob.cancel()
+            _serverSearchProgress.update { maxOf(it, 35) }
             if (requestVersion != serverRequestVersion.get()) return@launch
             if (candidates.isEmpty()) throw Exception("No servers found")
 
@@ -132,8 +152,10 @@ class PlayerViewModel(
             Log.i("StreamFlixES", "[SERVERS LIST] -> Found ${servers.size} servers: ${servers.joinToString { it.name }}")
 
             Log.d("PlayerViewModel", "Ricerca server completata: ${servers.size} server trovati")
+            _serverSearchProgress.value = 100
             _state.emit(State.SuccessLoadingServers(servers))
         } catch (e: Exception) {
+            discoveryProgressJob.cancel()
             if (requestVersion != serverRequestVersion.get()) return@launch
             Log.e("PlayerViewModel", "Errore ricerca server: ", e)
             _state.emit(State.FailedLoadingServers(e))
@@ -144,27 +166,79 @@ class PlayerViewModel(
         provider: com.streamflixreborn.streamflix.providers.Provider,
         candidates: List<Video.Server>,
     ): List<Video.Server> = coroutineScope {
-        candidates.map { server ->
-            async {
-                serverValidationSemaphore.withPermit {
-                    val video = withTimeoutOrNull(serverValidationTimeoutMs) {
-                        runCatching { provider.getVideo(server) }
-                            .onFailure { error ->
-                                Log.d("PlayerViewModel", "Servidor indisponível: ${server.name}", error)
-                            }
-                            .getOrNull()
+        val playable = mutableListOf<Video.Server>()
+        val maxPlayableServers = if (isTvDevice) MAX_TV_PLAYABLE_SERVERS else MAX_PLAYABLE_SERVERS
+        val batchSize = if (isTvDevice) TV_SERVER_VALIDATION_BATCH_SIZE else SERVER_VALIDATION_BATCH_SIZE
+        val distinctCandidates = candidates.distinctBy { it.id }
+        fun isPrevalidated(server: Video.Server): Boolean =
+            server.id.startsWith("playerflix-", ignoreCase = true) ||
+                server.id.startsWith("vela-moviebox-", ignoreCase = true)
+        val validationCandidates = if (isTvDevice) {
+            distinctCandidates.sortedByDescending(::isPrevalidated)
+                .take(MAX_TV_VALIDATION_CANDIDATES)
+        } else {
+            distinctCandidates
+        }
+        val completedValidations = AtomicInteger(0)
+
+        // Alguns extratores usam WebView ou respostas grandes. Abrir todos de uma vez pode
+        // encerrar o processo em celulares com pouca memória, mesmo com um semáforo interno.
+        for (batch in validationCandidates.chunked(batchSize)) {
+            val validatedBatch = batch.map { server ->
+                async {
+                    try {
+                    // A API do PlayerFlix já devolve opções individuais reais. Exibi-las sem
+                    // abrir quatro WebViews durante a busca deixa VIP, WatchPlay, Embed Play e
+                    // Premium disponíveis imediatamente; a extração ocorre apenas ao selecionar.
+                    if (isPrevalidated(server)) {
+                        return@async server
                     }
 
-                    if (video?.source.isNullOrBlank()) {
-                        Log.d("PlayerViewModel", "Servidor removido por não ter vídeo: ${server.name}")
-                        null
-                    } else {
-                        server.video = video
-                        server
+                    serverValidationSemaphore.withPermit {
+                        val validationTimeout = if (server.name.equals("VidLink", ignoreCase = true)) {
+                            if (isTvDevice) 12_000L else 15_000L
+                        } else {
+                            serverValidationTimeoutMs
+                        }
+                        val attempts = 1
+                        var video: Video? = null
+                        repeat(attempts) { attempt ->
+                            if (video?.source.isNullOrBlank()) {
+                                video = withTimeoutOrNull(validationTimeout) {
+                                    runCatching { provider.getVideo(server) }
+                                        .onFailure { error ->
+                                            Log.d(
+                                                "PlayerViewModel",
+                                                "Servidor indisponível: ${server.name} (tentativa ${attempt + 1}/$attempts)",
+                                                error,
+                                            )
+                                        }
+                                        .getOrNull()
+                                }
+                            }
+                        }
+
+                        if (video?.source.isNullOrBlank()) {
+                            Log.d("PlayerViewModel", "Servidor removido por não ter vídeo: ${server.name}")
+                            null
+                        } else {
+                            server.video = video
+                            server
+                        }
+                    }
+                    } finally {
+                        val completed = completedValidations.incrementAndGet()
+                        val progress = 35 + (completed * 60 / validationCandidates.size.coerceAtLeast(1))
+                        _serverSearchProgress.update { current -> maxOf(current, progress.coerceAtMost(95)) }
                     }
                 }
-            }
-        }.awaitAll().filterNotNull()
+            }.awaitAll().filterNotNull()
+
+            playable.addAll(validatedBatch)
+            if (playable.size >= maxPlayableServers) break
+        }
+
+        playable.take(maxPlayableServers)
     }
 
     fun getVideo(server: Video.Server) = viewModelScope.launch(Dispatchers.IO) {
@@ -458,5 +532,13 @@ class PlayerViewModel(
             val uri: Uri, val label: String, val mimeType: String, val languageTag: String
         ) : SubtitleState()
         data class FailedDownloadingStremioSubtitle(val error: Exception) : SubtitleState()
+    }
+
+    companion object {
+        private const val SERVER_VALIDATION_BATCH_SIZE = 4
+        private const val TV_SERVER_VALIDATION_BATCH_SIZE = 8
+        private const val MAX_PLAYABLE_SERVERS = 12
+        private const val MAX_TV_PLAYABLE_SERVERS = 10
+        private const val MAX_TV_VALIDATION_CANDIDATES = 12
     }
 }

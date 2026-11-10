@@ -3,17 +3,14 @@ package com.streamflixreborn.streamflix.extractors
 import android.os.Handler
 import android.os.Looper
 import android.webkit.WebResourceRequest
-import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.media3.common.MimeTypes
 import com.streamflixreborn.streamflix.StreamFlixApp
 import com.streamflixreborn.streamflix.models.Video
-import com.streamflixreborn.streamflix.utils.DnsResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -36,6 +33,7 @@ class VidsrcRuExtractor : Extractor() {
     override suspend fun extract(link: String): Video {
         return withContext(Dispatchers.Main) {
             suspendCancellableCoroutine { continuation ->
+                val mainHandler = Handler(Looper.getMainLooper())
                 val webView = WebView(StreamFlixApp.instance.applicationContext)
                 
                 webView.settings.apply {
@@ -43,29 +41,48 @@ class VidsrcRuExtractor : Extractor() {
                     domStorageEnabled = true
                 }
 
-                val timeoutHandler = Handler(Looper.getMainLooper())
+                // Função auxiliar segura para destruir a WebView apenas na Main Thread
+                fun safeDestroyWebView() {
+                    mainHandler.post {
+                        runCatching {
+                            webView.stopLoading()
+                            webView.webViewClient = object : WebViewClient() {}
+                            webView.destroy()
+                        }
+                    }
+                }
+
                 val timeoutRunnable = Runnable {
                     if (continuation.isActive) {
                         continuation.resumeWithException(Exception("Timeout waiting for VidsrcRu stream"))
-                        webView.destroy()
+                        safeDestroyWebView()
                     }
                 }
-                timeoutHandler.postDelayed(timeoutRunnable, 30000)
+                
+                mainHandler.postDelayed(timeoutRunnable, 30000)
 
                 webView.webViewClient = object : WebViewClient() {
-                    override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): android.webkit.WebResourceResponse? {
+                    // ATENÇÃO: Chamado em BACKGROUND THREAD pelo motor WebKit
+                    override fun shouldInterceptRequest(
+                        view: WebView?, 
+                        request: WebResourceRequest?
+                    ): android.webkit.WebResourceResponse? {
                         val url = request?.url?.toString() ?: ""
+                        
                         if (url.contains("/file2/") && url.endsWith(".m3u8")) {
-                            timeoutHandler.removeCallbacks(timeoutRunnable)
-                            if (continuation.isActive) {
-                                val video = Video(
-                                    source = url,
-                                    subtitles = emptyList(),
-                                    type = MimeTypes.APPLICATION_M3U8
-                                )
-                                Handler(Looper.getMainLooper()).post {
+                            // Envia o resultado de volta para a Main Thread
+                            mainHandler.post {
+                                if (continuation.isActive) {
+                                    mainHandler.removeCallbacks(timeoutRunnable)
+                                    
+                                    val video = Video(
+                                        source = url,
+                                        subtitles = emptyList(),
+                                        type = MimeTypes.APPLICATION_M3U8
+                                    )
+                                    
                                     continuation.resume(video)
-                                    webView.destroy()
+                                    safeDestroyWebView()
                                 }
                             }
                         }
@@ -76,12 +93,10 @@ class VidsrcRuExtractor : Extractor() {
                 webView.loadUrl(link)
 
                 continuation.invokeOnCancellation {
-                    webView.stopLoading()
-                    webView.destroy()
+                    mainHandler.removeCallbacks(timeoutRunnable)
+                    safeDestroyWebView()
                 }
             }
         }
     }
-
-
 }

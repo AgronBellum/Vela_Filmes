@@ -64,12 +64,32 @@ class WatchPlayExtractor : Extractor() {
     }
 
     override suspend fun extract(link: String): Video = withContext(Dispatchers.IO) {
-        val pageUrl = link.substringBefore("#")
+        val pageUrl = normalizeWatchPlayUrl(link.substringBefore("#"))
         var videoId = link.substringAfter("#video_id=", "")
+        val html = get(pageUrl, pageUrl)
+        val directUrl = Regex("""url\s*:\s*["']([^"']+)["']""")
+            .find(html)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.let(::normalizeUrl)
+            ?.takeIf { it.startsWith("http") }
+
+        if (directUrl != null) {
+            return@withContext Video(
+                source = directUrl,
+                headers = mapOf(
+                    "User-Agent" to USER_AGENT,
+                    "Referer" to pageUrl,
+                    "Origin" to WATCHPLAY_URL,
+                    "Accept" to "*/*",
+                ),
+                type = if (directUrl.contains(".mp4", ignoreCase = true)) MimeTypes.VIDEO_MP4 else MimeTypes.APPLICATION_M3U8,
+                extraBuffering = true,
+            )
+        }
 
         // Se o link não veio codificado com video_id, faz a raspagem da página HTML base
         if (videoId.isBlank()) {
-            val html = get(pageUrl, pageUrl)
             val doc = Jsoup.parse(html)
             videoId = doc.selectFirst(".player_select_item[data-id]")?.attr("data-id").orEmpty()
         }
@@ -156,9 +176,13 @@ class WatchPlayExtractor : Extractor() {
 
     private fun normalizeUrl(value: String): String = value.trim().replace("\\/", "/")
 
+    private fun normalizeWatchPlayUrl(value: String): String = value
+        .replace("https://v1.watchplay.shop", WATCHPLAY_URL, ignoreCase = true)
+        .replace("http://v1.watchplay.shop", WATCHPLAY_URL, ignoreCase = true)
+
     companion object {
         private const val TAG = "WatchPlayExtractor"
-        private const val WATCHPLAY_URL = "https://v1.watchplay.shop"
+        private const val WATCHPLAY_URL = "https://v2.watchplay.shop"
         private const val USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     }

@@ -84,8 +84,11 @@ class VidsrcXyzExtractor : Extractor() {
                 }
 
                 continuation.invokeOnCancellation {
-                    webView.stopLoading()
-                    webView.destroy()
+                    timeoutHandler.post {
+                        timeoutHandler.removeCallbacks(timeoutRunnable)
+                        runCatching { webView.stopLoading() }
+                        runCatching { webView.destroy() }
+                    }
                 }
 
                 webView.loadUrl(link)

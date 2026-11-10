@@ -195,8 +195,10 @@ class UpzoneExtractor : Extractor() {
                     )
 
                     cont.invokeOnCancellation {
-                        webView.stopLoading()
-                        webView.destroy()
+                        webView.post {
+                            runCatching { webView.stopLoading() }
+                            runCatching { webView.destroy() }
+                        }
                     }
                 }
             }

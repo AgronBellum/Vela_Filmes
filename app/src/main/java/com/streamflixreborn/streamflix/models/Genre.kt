@@ -7,6 +7,7 @@ class Genre(
     val name: String,
 
     val shows: List<Show> = listOf(),
+    val totalResults: Int? = null,
 ) : AppAdapter.Item {
 
     override lateinit var itemType: AppAdapter.Type
@@ -16,10 +17,12 @@ class Genre(
         id: String = this.id,
         name: String = this.name,
         shows: List<Show> = this.shows,
+        totalResults: Int? = this.totalResults,
     ) = Genre(
         id,
         name,
-        shows
+        shows,
+        totalResults,
     )
 
     override fun equals(other: Any?): Boolean {
@@ -31,6 +34,7 @@ class Genre(
         if (id != other.id) return false
         if (name != other.name) return false
         if (shows != other.shows) return false
+        if (totalResults != other.totalResults) return false
         if (!::itemType.isInitialized || !other::itemType.isInitialized) return false
         return itemType == other.itemType
     }
@@ -39,6 +43,7 @@ class Genre(
         var result = id.hashCode()
         result = 31 * result + name.hashCode()
         result = 31 * result + shows.hashCode()
+        result = 31 * result + (totalResults ?: 0)
         result = 31 * result + (if (::itemType.isInitialized) itemType.hashCode() else 0)
         return result
     }

@@ -307,7 +307,7 @@ class MovieViewHolder(
                                     id = movie.id,
                                     title = movie.title,
                                     subtitle = movie.released?.format("yyyy") ?: "",
-                                    videoType = Video.Type.Movie(id = movie.id, title = movie.title, releaseDate = movie.released?.format("yyyy-MM-dd") ?: "", poster = movie.poster ?: "", imdbId = movie.imdbId),
+                                    videoType = Video.Type.Movie(id = movie.id, title = movie.title, releaseDate = movie.released?.format("yyyy-MM-dd") ?: "", poster = movie.poster ?: "", imdbId = movie.imdbId, banner = movie.banner),
                                 ))
                             }
                         }
@@ -328,7 +328,7 @@ class MovieViewHolder(
         }
 
         binding.tvMovieQuality.apply {
-            text = movie.quality ?: ""
+            text = movie.rating?.let { "★ ${String.format(Locale.ROOT, "%.1f", it)}" } ?: movie.quality.orEmpty()
             visibility = when {
                 text.isNullOrEmpty() -> View.GONE
                 else -> View.VISIBLE
@@ -376,6 +376,7 @@ class MovieViewHolder(
                                                 releaseDate = movie.released?.format("yyyy-MM-dd") ?: "",
                                                 poster = movie.poster ?: movie.banner ?: "",
                                                 imdbId = movie.imdbId,
+                                                banner = movie.banner,
                                             )
                                         )
                                     }
@@ -436,7 +437,7 @@ class MovieViewHolder(
             }
         }
         binding.tvMovieQuality.apply {
-            text = movie.quality ?: ""
+            text = movie.rating?.let { "★ ${String.format(Locale.ROOT, "%.1f", it)}" } ?: movie.quality.orEmpty()
             visibility = when {
                 text.isNullOrEmpty() -> View.GONE
                 else -> View.VISIBLE
@@ -471,7 +472,7 @@ class MovieViewHolder(
         }
 
         binding.tvMovieQuality.apply {
-            text = movie.quality ?: ""
+            text = movie.rating?.let { "★ ${String.format(Locale.ROOT, "%.1f", it)}" } ?: movie.quality.orEmpty()
             visibility = when {
                 text.isNullOrEmpty() -> View.GONE
                 else -> View.VISIBLE
@@ -542,7 +543,7 @@ class MovieViewHolder(
             }
         }
         binding.tvMovieQuality.apply {
-            text = movie.quality ?: ""
+            text = movie.rating?.let { "★ ${String.format(Locale.ROOT, "%.1f", it)}" } ?: movie.quality.orEmpty()
             visibility = when {
                 text.isNullOrEmpty() -> View.GONE
                 else -> View.VISIBLE
@@ -694,7 +695,7 @@ class MovieViewHolder(
                         id = movie.id,
                         title = movie.title,
                         subtitle = movie.released?.format("yyyy") ?: "",
-                        videoType = Video.Type.Movie(id = movie.id, title = movie.title, releaseDate = movie.released?.format("yyyy-MM-dd") ?: "", poster = movie.poster ?: movie.banner ?: "", imdbId = movie.imdbId),
+                        videoType = Video.Type.Movie(id = movie.id, title = movie.title, releaseDate = movie.released?.format("yyyy-MM-dd") ?: "", poster = movie.poster ?: movie.banner ?: "", imdbId = movie.imdbId, banner = movie.banner),
                     ))
                 }
             }
@@ -823,7 +824,7 @@ class MovieViewHolder(
                         id = movie.id,
                         title = movie.title,
                         subtitle = movie.released?.format("yyyy") ?: "",
-                        videoType = Video.Type.Movie(id = movie.id, title = movie.title, releaseDate = movie.released?.format("yyyy-MM-dd") ?: "", poster = movie.poster ?: movie.banner ?: "", imdbId = movie.imdbId),
+                        videoType = Video.Type.Movie(id = movie.id, title = movie.title, releaseDate = movie.released?.format("yyyy-MM-dd") ?: "", poster = movie.poster ?: movie.banner ?: "", imdbId = movie.imdbId, banner = movie.banner),
                     ))
                 }
             }

@@ -676,12 +676,15 @@ class AppAdapter(
     }
 
     fun setOnLoadMoreListener(onLoadMoreListener: (() -> Unit)?) {
-        if (this.onLoadMoreListener != null && onLoadMoreListener == null) {
-            this.onLoadMoreListener = null
-            notifyItemRemoved(items.size)
-        } else {
+        val hadLoadingItem = this.onLoadMoreListener != null
+        val hasLoadingItem = onLoadMoreListener != null
+        if (hadLoadingItem == hasLoadingItem) {
             this.onLoadMoreListener = onLoadMoreListener
+            return
         }
+        val loadingPosition = items.size + if (header != null) 1 else 0
+        this.onLoadMoreListener = onLoadMoreListener
+        if (hasLoadingItem) notifyItemInserted(loadingPosition) else notifyItemRemoved(loadingPosition)
     }
 
     fun <T : ViewBinding> setFooter(

@@ -198,7 +198,17 @@ class MegaFlixExtractor : BaseStreamExtractor() {
                     addUrls(engMatch, isDubbed = false)
                 }
             }
-            serversList
+            // HideHide currently returns a master playlist whose child playlist may answer 403.
+            // Prefer the Lulu/Upbolt mirrors; keep HideHide available as a fallback in the picker.
+            serversList.sortedBy { server ->
+                val source = server.src.lowercase()
+                when {
+                    "luluvido" in source || "luluvdo" in source -> 0
+                    "upbolt" in source -> 1
+                    "hide" in source -> 2
+                    else -> 3
+                }
+            }
         }.getOrElse {
             Log.w(TAG, "Erro ao buscar episódios em getEpisodes: ${it.message}")
             emptyList()

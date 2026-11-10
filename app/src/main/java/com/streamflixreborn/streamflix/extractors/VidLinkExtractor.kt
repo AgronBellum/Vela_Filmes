@@ -9,6 +9,7 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.media3.common.MimeTypes
 import com.streamflixreborn.streamflix.StreamFlixApp
 import com.streamflixreborn.streamflix.models.Video
 import kotlinx.coroutines.Dispatchers
@@ -39,8 +40,12 @@ class VidLinkExtractor : Extractor() {
             suspendCancellableCoroutine { continuation ->
                 val webView = WebView(StreamFlixApp.instance.applicationContext)
                 
-                // Configure WebView settings
-                webView.settings.javaScriptEnabled = true
+                webView.settings.apply {
+                    javaScriptEnabled = true
+                    domStorageEnabled = true
+                    mediaPlaybackRequiresUserGesture = false
+                    userAgentString = USER_AGENT
+                }
 
                 // Timeout handler
                 val timeoutHandler = Handler(Looper.getMainLooper())
@@ -53,11 +58,47 @@ class VidLinkExtractor : Extractor() {
                 timeoutHandler.postDelayed(timeoutRunnable, 30000) // 30 seconds timeout
 
                 continuation.invokeOnCancellation {
-                    webView.stopLoading()
-                    webView.destroy()
+                    timeoutHandler.post {
+                        timeoutHandler.removeCallbacks(timeoutRunnable)
+                        runCatching { webView.stopLoading() }
+                        runCatching { webView.destroy() }
+                    }
                 }
 
                 webView.webViewClient = object : WebViewClient() {
+
+                    override fun shouldInterceptRequest(
+                        view: WebView?,
+                        request: WebResourceRequest?,
+                    ): WebResourceResponse? {
+                        val requestUrl = request?.url?.toString().orEmpty()
+                        if (isPlayableRequest(requestUrl) && continuation.isActive) {
+                            timeoutHandler.removeCallbacks(timeoutRunnable)
+                            val playbackHeaders = request?.requestHeaders.orEmpty().toMutableMap().apply {
+                                putIfAbsent("User-Agent", USER_AGENT)
+                                putIfAbsent("Referer", link)
+                                putIfAbsent("Origin", mainUrl)
+                            }
+                            continuation.resume(
+                                Video(
+                                    source = requestUrl,
+                                    subtitles = emptyList(),
+                                    headers = playbackHeaders,
+                                    type = if (requestUrl.contains(".mpd", ignoreCase = true)) {
+                                        MimeTypes.APPLICATION_MPD
+                                    } else {
+                                        MimeTypes.APPLICATION_M3U8
+                                    },
+                                    extraBuffering = true,
+                                )
+                            )
+                            timeoutHandler.post {
+                                runCatching { webView.stopLoading() }
+                                runCatching { webView.destroy() }
+                            }
+                        }
+                        return super.shouldInterceptRequest(view, request)
+                    }
                     
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
@@ -130,5 +171,18 @@ class VidLinkExtractor : Extractor() {
                 webView.loadUrl(link)
             }
         }
+    }
+
+    private fun isPlayableRequest(url: String): Boolean {
+        val normalized = url.lowercase()
+        return normalized.contains(".m3u8") ||
+            normalized.contains(".mpd") ||
+            normalized.contains("/api/mercury") ||
+            normalized.contains("/api/venus")
+    }
+
+    companion object {
+        private const val USER_AGENT =
+            "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
     }
 }

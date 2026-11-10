@@ -549,6 +549,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                             R.string.player_settings_quality,
                             item.height
                         )
+                        is Settings.Quality.ExternalVideoQuality -> item.name
                     }
 
                     is Settings.Subtitle -> when (item) {
@@ -611,6 +612,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                                 R.string.player_settings_quality,
                                 selected.height
                             )
+                            is Settings.Quality.ExternalVideoQuality -> selected.name
                         }
                         Settings.Audio -> Settings.Audio.selected?.name
                         Settings.SubtitleSync -> Settings.Subtitle.OffsetAdjustment.formattedValue()

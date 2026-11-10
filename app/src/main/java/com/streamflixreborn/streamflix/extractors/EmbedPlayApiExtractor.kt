@@ -600,7 +600,7 @@ class EmbedPlayApiExtractor : Extractor() {
                 .trim()
 
             if (slug.isNotBlank()) {
-                return "https://abysscdn.com/?v=$slug"
+                return "https://player.abyssplayer.com/?v=$slug"
             }
         }
 

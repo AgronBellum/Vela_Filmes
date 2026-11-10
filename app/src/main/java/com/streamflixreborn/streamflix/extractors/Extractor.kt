@@ -116,6 +116,8 @@ abstract class Extractor {
             ClickHostExtractor(),
             WatchPlayExtractor(),
             EmbedPlayApiExtractor(),
+            SuperCineExtractor(),
+            MovieBoxBackendExtractor(),
             MegaFlixExtractor()
         )
 

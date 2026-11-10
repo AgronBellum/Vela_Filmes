@@ -32,10 +32,11 @@ import kotlin.coroutines.resumeWithException
 
 class PlayerFlixExtractor : Extractor() {
     override val name = "PlayerFlix"
-    override val mainUrl = PLAYERFLIX_URL
+    override val mainUrl = SUPERFLIX_URL
     override val aliasUrls = listOf(
+        PLAYERFLIX_URL,
+        LEGACY_SUPERFLIX_URL,
         "https://embedplayer2.xyz",
-        "https://embed-api.clickhost.xyz",
         "https://xn--kcksk7a2bl5le7b6doc1h3f.com",
     )
 
@@ -47,33 +48,56 @@ class PlayerFlixExtractor : Extractor() {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     suspend fun servers(videoType: Video.Type): List<Video.Server> = runCatching {
-        val pageUrl = playerPageUrl(videoType)
-        val html = get(ajaxUrl(videoType), pageUrl)
-        val doc = Jsoup.parse(html)
+        val json = JSONObject(get(apiUrl(videoType), playerPageUrl(videoType)))
+        if (!json.optBoolean("status", false)) return@runCatching emptyList()
 
-        doc.select(".player-option[data-embed]").mapIndexedNotNull { index, element ->
-            val embedUrl = decodeBase64(element.attr("data-embed")) ?: return@mapIndexedNotNull null
-            val playerName = element.selectFirst(".player-name")?.text()?.trim()?.takeIf { it.isNotBlank() }
-                ?: embedUrl.substringAfter("://").substringBefore("/")
-            val audio = element.attr("data-audio").takeIf { it.isNotBlank() } ?: "pt-br"
-            Video.Server(
-                id = "playerflix-$audio-$index-$embedUrl",
-                name = "PlayerFlix Dublado - $playerName",
-                src = embedUrl,
-            )
-        }
+        val options = json.optJSONObject("data")?.optJSONArray("options")
+            ?: return@runCatching emptyList()
+
+        buildList {
+            for (index in 0 until options.length()) {
+                val option = options.optJSONObject(index) ?: continue
+                val embedUrl = normalizePlayerUrl(option.optString("embed"))
+                if (!embedUrl.startsWith("http")) continue
+
+                // O ClickHost possui um extrator dedicado que usa as rotas
+                // documentadas /embed/filme e /embed/serie e expande todos os
+                // servidores internos. Evita duplicar aqui uma opcao que seria
+                // resolvida pelo antigo POST /api, removido pelo provedor.
+                if (embedUrl.contains("embed-api.clickhost.xyz", ignoreCase = true)) continue
+
+                val audio = option.optString("lang").trim().lowercase().ifBlank { "pt-br" }
+                val language = when (audio) {
+                    "pt", "pt-br", "dub", "dublado" -> "Dublado PT-BR"
+                    "en", "en-us", "leg", "legendado" -> "Legendado"
+                    else -> audio.uppercase()
+                }
+                val playerName = option.optString("label").trim().ifBlank {
+                    embedUrl.substringAfter("://").substringBefore("/")
+                }
+
+                add(
+                    Video.Server(
+                        id = "playerflix-$audio-$index-${embedUrl.hashCode()}",
+                        name = "PlayerFlix • $language • $playerName",
+                        src = embedUrl,
+                    )
+                )
+            }
+        }.distinctBy { it.src }
             .sortedWith(compareBy<Video.Server> { playerFlixPriority(it.name) }.thenBy { it.name.lowercase() })
-            .ifEmpty { listOf(server(videoType)) }
     }.onFailure {
         Log.w(TAG, "Falha ao buscar players PlayerFlix: ${it.message}")
-    }.getOrElse { listOf(server(videoType)) }
+    }.getOrElse { emptyList() }
 
     private fun playerFlixPriority(name: String): Int {
         val normalized = name.lowercase()
         return when {
-            "premium" in normalized -> 0
-            "vip" in normalized -> 1
-            else -> 2
+            "vip" in normalized -> 0
+            "watchplay" in normalized -> 1
+            "embed" in normalized -> 2
+            "premium" in normalized -> 3
+            else -> 4
         }
     }
 
@@ -87,14 +111,28 @@ class PlayerFlixExtractor : Extractor() {
     }
 
     override suspend fun extract(link: String): Video {
-        val stream = resolveDirectStream(link) ?: DirectStream(extractWithWebView(link), MimeTypes.APPLICATION_M3U8)
+        val normalizedLink = normalizePlayerUrl(link)
+
+        // Cada agregador usa seu resolvedor próprio. Isso evita depender do
+        // JavaScript do PlayerFlix e melhora a compatibilidade com TV Box.
+        when {
+            normalizedLink.contains("watchplay.shop", ignoreCase = true) ||
+                normalizedLink.contains("watchplayer.net", ignoreCase = true) ->
+                return WatchPlayExtractor().extract(normalizedLink)
+
+            normalizedLink.contains("embedplayabyss", ignoreCase = true) ->
+                return EmbedPlayApiExtractor().extract(normalizedLink)
+        }
+
+        val stream = resolveDirectStream(normalizedLink)
+            ?: DirectStream(extractWithWebView(normalizedLink), MimeTypes.APPLICATION_M3U8)
         return Video(
             source = stream.url,
             subtitles = emptyList(),
             headers = mapOf(
                 "User-Agent" to USER_AGENT,
-                "Referer" to refererFor(link),
-                "Origin" to originFor(link),
+                "Referer" to refererFor(normalizedLink),
+                "Origin" to originFor(normalizedLink),
                 "Accept" to "application/vnd.apple.mpegurl,application/x-mpegurl,video/mp2t,*/*",
                 "Accept-Language" to "pt-BR,pt;q=0.9,en;q=0.8",
             ),
@@ -108,6 +146,8 @@ class PlayerFlixExtractor : Extractor() {
             .url(url)
             .header("User-Agent", USER_AGENT)
             .header("Referer", referer)
+            .header("X-Requested-With", "XMLHttpRequest")
+            .header("Accept", "application/json, text/javascript, */*; q=0.01")
             .header("Accept-Language", "pt-BR,pt;q=0.9,en;q=0.8")
             .header("Cache-Control", "no-cache")
             .header("Pragma", "no-cache")
@@ -124,14 +164,25 @@ class PlayerFlixExtractor : Extractor() {
         is Video.Type.Episode -> "$PLAYERFLIX_URL/serie/${videoType.tvShow.id}/${videoType.season.number}/${videoType.number}"
     }
 
-    private fun ajaxUrl(videoType: Video.Type): String = when (videoType) {
-        is Video.Type.Movie -> "$PLAYERFLIX_URL/pages/ajax.php?id=${videoType.id}&type=movie&_=${System.currentTimeMillis()}"
-        is Video.Type.Episode -> "$PLAYERFLIX_URL/pages/ajax.php?id=${videoType.tvShow.id}&type=tv&season=${videoType.season.number}&episode=${videoType.number}&_=${System.currentTimeMillis()}"
+    private fun apiUrl(videoType: Video.Type): String = when (videoType) {
+        is Video.Type.Movie ->
+            "$PLAYERFLIX_URL/inc/Ajax.php?type=movie&id=${videoType.id}&season=1&episode=1"
+        is Video.Type.Episode ->
+            "$PLAYERFLIX_URL/inc/Ajax.php?type=tv&id=${videoType.tvShow.id}" +
+                "&season=${videoType.season.number}&episode=${videoType.number}"
     }
 
     private fun decodeBase64(value: String): String? = runCatching {
         String(Base64.decode(value.trim(), Base64.DEFAULT), Charsets.UTF_8).takeIf { it.startsWith("http") }
     }.getOrNull()
+
+    private fun normalizePlayerUrl(value: String): String {
+        val normalized = normalizeUrl(value)
+        return normalized
+            .replace(LEGACY_SUPERFLIX_URL, SUPERFLIX_URL, ignoreCase = true)
+            .replace("http://superflixapi.boats", SUPERFLIX_URL, ignoreCase = true)
+            .replace("https://v1.watchplay.shop", "https://v2.watchplay.shop", ignoreCase = true)
+    }
 
     private suspend fun resolveDirectStream(link: String): DirectStream? = withContext(Dispatchers.IO) {
         runCatching {
@@ -156,7 +207,7 @@ class PlayerFlixExtractor : Extractor() {
             .add("action", "getPlayer")
             .add("video_id", videoId)
             .build()
-        val response = postBlocking("https://embed-api.clickhost.xyz/#api", body, link)
+        val response = postBlocking("https://embed-api.clickhost.xyz/api", body, link)
         val json = JSONObject(response)
         val data = json.optJSONObject("data")
         val videoUrl = normalizeUrl(
@@ -323,6 +374,7 @@ class PlayerFlixExtractor : Extractor() {
     }
 
     private fun refererFor(url: String): String = when {
+        url.contains("superflixapi.boats") -> "$SUPERFLIX_URL/"
         url.contains("embed-api.clickhost.xyz") -> "$PLAYERFLIX_URL/"
         url.contains("embedplayer2.xyz") -> "$PLAYERFLIX_URL/"
         url.contains("xn--kcksk7a2bl5le7b6doc1h3f.com") -> "$PLAYERFLIX_URL/"
@@ -330,7 +382,8 @@ class PlayerFlixExtractor : Extractor() {
     }
 
     private fun originFor(url: String): String = when {
-        url.contains("embed-api.clickhost.xyz") -> "https://embed-api.clickhost.xyz/#api"
+        url.contains("superflixapi.boats") -> SUPERFLIX_URL
+        url.contains("embed-api.clickhost.xyz") -> "https://embed-api.clickhost.xyz"
         url.contains("embedplayer2.xyz") -> "https://embedplayer2.xyz"
         url.contains("xn--kcksk7a2bl5le7b6doc1h3f.com") -> "https://xn--kcksk7a2bl5le7b6doc1h3f.com"
         else -> PLAYERFLIX_URL
@@ -344,6 +397,8 @@ class PlayerFlixExtractor : Extractor() {
         private const val M3U8_EXTENSION = ".m3u8"
         private const val CONSOLE_PREFIX = "PlayerFlix m3u8:"
         private const val PLAYERFLIX_URL = "https://playerflix.ink"
+        private const val SUPERFLIX_URL = "https://superflixapi.boats"
+        private const val LEGACY_SUPERFLIX_URL = "https://superflixapi.fun"
         private const val USER_AGENT =
             "Mozilla/5.0 (Linux; Android 13; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
 

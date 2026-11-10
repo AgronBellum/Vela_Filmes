@@ -47,6 +47,7 @@ import androidx.media3.ui.SubtitleView
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.bumptech.glide.Glide
 import com.streamflixreborn.streamflix.R
 import com.streamflixreborn.streamflix.activities.tools.BypassWebViewActivity
 import com.streamflixreborn.streamflix.database.AppDatabase
@@ -262,6 +263,7 @@ class PlayerMobileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setupServerLoadingBackdrop()
         initializePlayer(false)
         initializeVideo()
         gestureHelper = PlayerGestureHelper(
@@ -279,7 +281,7 @@ class PlayerMobileFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch { 
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.CREATED).collect { state ->
                 when (state) {
-                    PlayerViewModel.State.LoadingServers -> showServerLoading(true)
+                    PlayerViewModel.State.LoadingServers -> showServerSearchLoading()
                     is PlayerViewModel.State.SuccessLoadingServers -> {
                         servers = state.servers
                         val sToServer = servers.firstOrNull {
@@ -331,7 +333,8 @@ class PlayerMobileFragment : Fragment() {
                                 })
                                 .build()
                             binding.settings.setOnServerSelectedListener { server ->
-                                viewModel.getVideo(state.servers.find { server.id == it.id }!!)
+                                state.servers.firstOrNull { server.id == it.id }
+                                    ?.let(viewModel::getVideo)
                             }
                             viewModel.getVideo(selectInitialServer(state.servers))
                         }
@@ -771,6 +774,33 @@ class PlayerMobileFragment : Fragment() {
             }
         }
 
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.serverSearchProgress.flowWithLifecycle(lifecycle, Lifecycle.State.CREATED).collect { progress ->
+                binding.pbServerSearch.progress = progress
+                binding.tvServerSearchPercent.text = "$progress%"
+            }
+        }
+        binding.settings.setOnQualitySelectedListener { quality ->
+            val video = currentVideo ?: return@setOnQualitySelectedListener
+            val variant = when (quality) {
+                is PlayerSettingsView.Settings.Quality.ExternalVideoQuality -> quality.quality
+                is PlayerSettingsView.Settings.Quality.Auto -> video.qualities.maxByOrNull { it.height }
+                else -> null
+            } ?: return@setOnQualitySelectedListener
+            if (variant.source == video.source) return@setOnQualitySelectedListener
+
+            lifecycleScope.launch {
+                displayVideo(
+                    video.copy(
+                        source = variant.source,
+                        type = variant.type ?: video.type,
+                        headers = variant.headers ?: video.headers,
+                    ),
+                    currentServer ?: return@launch,
+                )
+            }
+        }
+
         binding.settings.setOnExtraBufferingSelectedListener {
             lifecycleScope.launch {
                 displayVideo(
@@ -950,6 +980,7 @@ class PlayerMobileFragment : Fragment() {
     private suspend fun displayVideo(video: Video, server: Video.Server) {
         currentVideo = video
         currentServer = server
+        binding.settings.setVideoQualities(video.qualities)
         updatePlayerHeader()
 
         val extraBuffering = PlayerSettingsView.Settings.ExtraBuffering.isEnabled
@@ -1412,8 +1443,28 @@ class PlayerMobileFragment : Fragment() {
         player.trackSelectionParameters = builder.build()
     }
 
+    private fun setupServerLoadingBackdrop() {
+        val image = when (val type = args.videoType) {
+            is Video.Type.Movie -> type.banner?.takeIf { it.isNotBlank() } ?: type.poster
+            is Video.Type.Episode -> type.tvShow.banner ?: type.poster ?: type.tvShow.poster
+        }
+        Glide.with(this).load(image).centerCrop().into(binding.ivServerLoadingBackdrop)
+    }
+
+    private fun showServerSearchLoading() {
+        binding.llServerLoading.isVisible = true
+        binding.pbServerSearch.isIndeterminate = false
+        binding.tvServerSearchPercent.isVisible = true
+        binding.tvServerSearchStatus.setText(R.string.player_searching_server)
+    }
+
     private fun showServerLoading(show: Boolean) {
         binding.llServerLoading.isVisible = show
+        if (show) {
+            binding.pbServerSearch.isIndeterminate = true
+            binding.tvServerSearchPercent.isVisible = false
+            binding.tvServerSearchStatus.setText(R.string.player_opening_source)
+        }
     }
 
     companion object {

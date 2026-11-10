@@ -1,0 +1,12 @@
+services:
+  vela-moviebox:
+    build: .
+    container_name: vela-moviebox
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      MOVIEBOX_REGION: BR
+      MOVIEBOX_SP_CODE: "404"
+      VELA_TOKEN_SECRET: "${VELA_TOKEN_SECRET:-troque-esta-chave-no-casaos}"
+      VELA_API_KEY: "${VELA_API_KEY:-}"

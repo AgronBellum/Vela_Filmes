@@ -10,8 +10,17 @@ data class Video(
     val headers: Map<String, String>? = null,
     val type: String? = null,
     val extraBuffering: Boolean = false,
-    val useServerSubtitleSetting: Boolean = false
+    val useServerSubtitleSetting: Boolean = false,
+    val qualities: List<Quality> = emptyList(),
 ) : Serializable {
+
+    data class Quality(
+        val label: String,
+        val height: Int,
+        val source: String,
+        val type: String? = null,
+        val headers: Map<String, String>? = null,
+    ) : Serializable
 
     sealed class Type : Parcelable, Serializable {
         @Parcelize
@@ -21,6 +30,7 @@ data class Video(
             val releaseDate: String,
             val poster: String,
             val imdbId: String?,
+            val banner: String? = null,
         ) : Type(), Serializable
 
         @Parcelize

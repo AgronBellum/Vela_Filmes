@@ -427,6 +427,9 @@ object TMDb3 {
                 params = params.filterNotNullValues(),
             )
         }
+
+        suspend fun keywords(query: String, page: Int = 1): PageResult<KeywordResult> =
+            service.searchKeywords(query, mapOf(Params.Key.PAGE to page.toString()))
     }
 
     object Trending {
@@ -1033,6 +1036,12 @@ object TMDb3 {
             @QueryMap params: Map<String, String> = emptyMap(),
         ): PageResult<MultiItem>
 
+        @GET("search/keyword")
+        suspend fun searchKeywords(
+            @Query("query") query: String,
+            @QueryMap params: Map<String, String> = emptyMap(),
+        ): PageResult<KeywordResult>
+
 
         @GET("trending/all/{time_window}")
         suspend fun getTrendingAll(
@@ -1076,6 +1085,8 @@ object TMDb3 {
     data class Result<T>(
         val results: List<T>
     )
+
+    data class KeywordResult(val id: Int, val name: String)
 
     data class PageResult<T>(
         @SerializedName("page") val page: Int,

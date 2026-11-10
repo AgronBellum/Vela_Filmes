@@ -215,8 +215,10 @@ open class StreamWishExtractor : Extractor() {
                     webView.loadUrl(url)
 
                     cont.invokeOnCancellation {
-                        webView.stopLoading()
-                        webView.destroy()
+                        webView.post {
+                            runCatching { webView.stopLoading() }
+                            runCatching { webView.destroy() }
+                        }
                     }
                 }
             }

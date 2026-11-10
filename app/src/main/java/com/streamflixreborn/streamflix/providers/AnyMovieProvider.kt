@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit
 
 object AnyMovieProvider : Provider {
 
-    private const val URL = "https://anymovie.cc/"
+    private const val URL = "https://anymovie.site/"
     override val baseUrl = URL
     override val name = "AnyMovie"
     override val logo = "$URL/wp-content/uploads/2023/08/AM-LOGO-1.png"
@@ -1000,7 +1000,7 @@ object AnyMovieProvider : Provider {
         @GET(".")
         suspend fun search(@Query("s") s: String): Document
 
-        @POST("https://anymovie.cc/wp-admin/admin-ajax.php")
+        @POST("https://anymovie.site/wp-admin/admin-ajax.php")
         @FormUrlEncoded
         suspend fun api(
             @Field("vars") vars: String,

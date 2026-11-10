@@ -130,7 +130,10 @@ class ClickHostExtractor : Extractor() {
          */
         val serverId = server?.id
             ?.trim()
-            ?.takeIf { it.isNotBlank() && it != "0" }
+            // IDs reais dos servidores ClickHost sao numericos. Outros
+            // agregadores usam IDs textuais proprios e nao podem ser enviados
+            // para /embed/stream/{id}/init.
+            ?.takeIf { it.isNotBlank() && it != "0" && it.all(Char::isDigit) }
 
         val pageUrl = server?.src
             ?.trim()

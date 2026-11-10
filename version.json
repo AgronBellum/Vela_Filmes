@@ -1,6 +1,6 @@
 {
-  "versionCode": 147,
-  "versionName": "1.7.117",
-  "apkUrl": "https://github.com/AgronBellum/Vela_Filmes/app-debug.apk",
-  "changelog": "Novos recursos e correções"
+  "versionCode": 160,
+  "versionName": "1.7.130",
+  "apkUrl": "https://github.com/AgronBellum/Vela_Filmes/releases/latest/download/app-debug.apk",
+  "changelog": "EPG corrigido com suporte a variantes de canais; foco roxo e centralizado nos catálogos; busca de servidores com banner e progresso de 0 a 100%"
 }

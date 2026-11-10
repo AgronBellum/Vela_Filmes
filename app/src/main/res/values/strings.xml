@@ -503,11 +503,13 @@
     <string name="settings_prefer_dubbed_playback_title">Priorizar dublado (PlayerFlix)</string>
     <string name="settings_prefer_dubbed_playback_summary">Escolhe PlayerFlix primeiro e pede &#225;udio em portugu&#234;s quando dispon&#237;vel</string>
     <string name="player_searching_server">Procurando servidor, aguarde...</string>
+    <string name="player_opening_source">Abrindo a fonte selecionada...</string>
     <string name="player_settings_subtitle_advance_label">Adiantar legenda (-0,5s)</string>
     <string name="player_settings_subtitle_delay_label">Atrasar legenda (+0,5s)</string>
     <string name="player_settings_subtitle_offset_reset_label">Resetar sincroniza&#231;&#227;o</string>
     <string name="main_menu_live_tv">TV</string>
     <string name="live_tv_loading">Carregando canais...</string>
+    <string name="live_tv_refresh">Atualizar Canais</string>
     <string name="live_tv_empty">Nenhum canal encontrado.</string>
     <string name="live_tv_error">N&#227;o foi poss&#237;vel carregar os canais.</string>
     <string name="live_tv_live_badge">Ao vivo</string>
