@@ -1,6 +1,6 @@
 {
-  "versionCode": 165,
-  "versionName": "1.7.135",
+  "versionCode": 166,
+  "versionName": "1.7.136",
   "apkUrl": "https://github.com/AgronBellum/Vela_Filmes/releases/latest/download/app-debug.apk",
   "changelog": "Visual mais padronizado e profissional; botões arredondados com gradientes adaptados ao tema; foco e contraste aprimorados na TV; painéis, menus, player, canais e configurações com cores consistentes; correções de compilação e estabilidade dos recursos."
 }
