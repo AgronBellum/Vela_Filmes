@@ -267,7 +267,7 @@
             android:layout_marginTop="10dp"
             android:background="@drawable/bg_button_tv"
             android:text="Tentar novamente"
-            android:textColor="#FFFFFF"
+            android:textColor="@drawable/color_button_text"
             android:textStyle="bold" />
     </LinearLayout>
 

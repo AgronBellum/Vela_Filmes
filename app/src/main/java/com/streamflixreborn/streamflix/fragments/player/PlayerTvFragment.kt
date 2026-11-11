@@ -151,6 +151,15 @@ class PlayerTvFragment : Fragment() {
     private var wsServer: BypassWebSocketServer? = null
     private var currentExtraBuffering = false
     private var currentSoftwareDecoder = false
+    private val bufferingProgressHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val bufferingProgressRunnable = object : Runnable {
+        override fun run() {
+            val currentBinding = _binding ?: return
+            if (!currentBinding.playbackBufferingOverlay.isVisible || !::player.isInitialized) return
+            currentBinding.playbackLoadingLogo.setProgress(playbackBufferPercent())
+            bufferingProgressHandler.postDelayed(this, 250L)
+        }
+    }
 
     private val chooserReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -665,6 +674,7 @@ class PlayerTvFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        bufferingProgressHandler.removeCallbacks(bufferingProgressRunnable)
         super.onDestroyView()
         clearBypassSession(dismissDialog = true)
         releasePlayer()
@@ -934,6 +944,7 @@ class PlayerTvFragment : Fragment() {
             viewModel.serverSearchProgress.flowWithLifecycle(lifecycle, Lifecycle.State.CREATED).collect { progress ->
                 binding.pbServerSearch.progress = progress
                 binding.tvServerSearchPercent.text = "$progress%"
+                binding.serverLoadingLogo.setProgress(progress)
             }
         }
         binding.settings.setOnStremioSubtitleSelectedListener { subtitleItem ->
@@ -1670,6 +1681,7 @@ class PlayerTvFragment : Fragment() {
 
     private fun showServerSearchLoading() {
         binding.llServerLoading.isVisible = true
+        binding.serverLoadingLogo.setProgress(0)
         binding.serverLoadingLogo.startLoading()
         binding.pbServerSearch.isIndeterminate = false
         binding.tvServerSearchPercent.isVisible = true
@@ -1679,6 +1691,7 @@ class PlayerTvFragment : Fragment() {
     private fun showServerLoading(show: Boolean) {
         binding.llServerLoading.isVisible = show
         if (show) {
+            binding.serverLoadingLogo.setProgress(100)
             binding.serverLoadingLogo.startLoading()
             showPlaybackBuffering(false)
             binding.pbServerSearch.isIndeterminate = true
@@ -1695,7 +1708,25 @@ class PlayerTvFragment : Fragment() {
     private fun showPlaybackBuffering(show: Boolean) {
         val visible = show && !binding.llServerLoading.isVisible
         binding.playbackBufferingOverlay.isVisible = visible
-        if (visible) binding.playbackLoadingLogo.startLoading() else binding.playbackLoadingLogo.stopLoading()
+        bufferingProgressHandler.removeCallbacks(bufferingProgressRunnable)
+        if (visible) {
+            binding.playbackLoadingLogo.setProgress(playbackBufferPercent())
+            binding.playbackLoadingLogo.startLoading()
+            bufferingProgressHandler.post(bufferingProgressRunnable)
+        } else {
+            binding.playbackLoadingLogo.stopLoading()
+        }
+    }
+
+    private fun playbackBufferPercent(): Int {
+        if (!::player.isInitialized) return 0
+        val bufferedAheadMs = (player.bufferedPosition - player.currentPosition).coerceAtLeast(0L)
+        val targetMs = if (currentExtraBuffering) {
+            EXTRA_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+        } else {
+            NORMAL_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+        }
+        return ((bufferedAheadMs * 100L) / targetMs.coerceAtLeast(1)).toInt().coerceIn(0, 100)
     }
 
     private data class EpisodeServerSelection(

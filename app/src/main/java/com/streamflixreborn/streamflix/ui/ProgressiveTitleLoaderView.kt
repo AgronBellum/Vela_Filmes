@@ -1,6 +1,5 @@
 package com.streamflixreborn.streamflix.ui
 
-import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Rect
@@ -9,7 +8,6 @@ import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.View
-import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
@@ -27,17 +25,6 @@ class ProgressiveTitleLoaderView @JvmOverloads constructor(
     private val brightTitle = titleText(1f)
     private var progress = 0f
     private var target: CustomTarget<Drawable>? = null
-
-    private val animator = ValueAnimator.ofFloat(0f, 1f).apply {
-        duration = 1_800L
-        repeatCount = ValueAnimator.INFINITE
-        repeatMode = ValueAnimator.RESTART
-        interpolator = AccelerateDecelerateInterpolator()
-        addUpdateListener {
-            progress = it.animatedValue as Float
-            updateClip()
-        }
-    }
 
     init {
         isClickable = false
@@ -82,11 +69,15 @@ class ProgressiveTitleLoaderView @JvmOverloads constructor(
 
     fun startLoading() {
         visibility = View.VISIBLE
-        if (!animator.isStarted) animator.start()
+        updateClip()
+    }
+
+    fun setProgress(percent: Int) {
+        progress = percent.coerceIn(0, 100) / 100f
+        updateClip()
     }
 
     fun stopLoading() {
-        animator.cancel()
         progress = 0f
         visibility = View.GONE
         updateClip()
@@ -98,7 +89,6 @@ class ProgressiveTitleLoaderView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
-        animator.cancel()
         target?.let { Glide.with(context.applicationContext).clear(it) }
         target = null
         super.onDetachedFromWindow()

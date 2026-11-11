@@ -70,7 +70,7 @@
                     android:focusableInTouchMode="true"
                     android:gravity="center"
                     android:text="-"
-                    android:textColor="#FFFFFFFF"
+                    android:textColor="@drawable/color_button_text"
                     android:textSize="32sp"
                     tools:ignore="HardcodedText" />
 
@@ -96,7 +96,7 @@
                     android:focusableInTouchMode="true"
                     android:gravity="center"
                     android:text="+"
-                    android:textColor="#FFFFFFFF"
+                    android:textColor="@drawable/color_button_text"
                     android:textSize="30sp"
                     tools:ignore="HardcodedText" />
             </LinearLayout>

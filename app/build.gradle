@@ -24,12 +24,15 @@ android {
     compileSdk 36
 
     def properties = new Properties()
-    properties.load(project.rootProject.file('local.properties').newDataInputStream())
+    def localPropertiesFile = rootProject.layout.projectDirectory.file('local.properties')
+    if (localPropertiesFile.asFile.exists()) {
+        properties.load(new StringReader(providers.fileContents(localPropertiesFile).asText.get()))
+    }
 
     def envProperties = new Properties()
-    def envFile = project.rootProject.file('.env')
-    if (envFile.exists()) {
-        envFile.withInputStream { envProperties.load(it) }
+    def envFile = rootProject.layout.projectDirectory.file('.env')
+    if (envFile.asFile.exists()) {
+        envProperties.load(new StringReader(providers.fileContents(envFile).asText.get()))
     }
 
     def signingPropertiesFile = project.rootProject.file('keystore.properties')
@@ -42,8 +45,8 @@ android {
         applicationId "com.streamflixreborn.streamflix"
         minSdk 21
         targetSdk 35
-        versionCode 161
-        versionName "1.7.131"
+        versionCode 162
+        versionName "1.7.132"
 
         buildConfigField "String", "APP_LAYOUT", "\"${properties.getProperty("APP_LAYOUT")}\""
         buildConfigField "String", "TMDB_API_KEY", "\"${properties.getProperty("TMDB_API_KEY")}\""

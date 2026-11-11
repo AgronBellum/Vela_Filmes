@@ -2,9 +2,9 @@
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_focused="true">
         <shape>
-            <solid android:color="#2A2A2A" />
+            <solid android:color="?attr/colorAccent" />
             <corners android:radius="7dp" />
-            <stroke android:width="2dp" android:color="?attr/colorAccent" />
+            <stroke android:width="3dp" android:color="#FFFFFFFF" />
         </shape>
     </item>
     <item>
