@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#2A2A2A" />
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <!-- Cantos arredondados -->
     <corners android:radius="27dp" />
-    <stroke android:width="1dp" android:color="?attr/colorAccent" />
+
+    <!-- Gradiente seguindo o tema escolhido -->
+    <gradient
+        android:type="linear"
+        android:angle="0"
+        android:startColor="?attr/app_background_color"
+        android:centerColor="?attr/colorAccent"
+        android:endColor="?attr/colorAccent" />
+
+    <stroke
+        android:width="1dp"
+        android:color="?attr/colorControlActivated" />
+
 </shape>

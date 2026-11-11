@@ -1,6 +1,6 @@
 {
-  "versionCode": 162,
-  "versionName": "1.7.132",
+  "versionCode": 163,
+  "versionName": "1.7.133",
   "apkUrl": "https://github.com/AgronBellum/Vela_Filmes/releases/latest/download/app-debug.apk",
-  "changelog": "Foco mais visível e legível nos botões; transparência restaurada nos canais e no EPG; painel de busca de servidores arredondado e translúcido; logos do Fanart TV corrigidas; carregamento sincronizado com o progresso real e controles do player reposicionados."
+  "changelog": "Visual mais padronizado e profissional; botões arredondados com gradientes adaptados ao tema; foco e contraste aprimorados na TV; painéis, menus, player, canais e configurações com cores consistentes; correções de compilação e estabilidade dos recursos."
 }

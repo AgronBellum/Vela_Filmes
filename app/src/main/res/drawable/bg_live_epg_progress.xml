@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Fundo da barra -->
     <item android:id="@android:id/background">
-        <shape>
+        <shape android:shape="rectangle">
             <corners android:radius="2dp" />
             <solid android:color="#33FFFFFF" />
         </shape>
     </item>
+
+    <!-- Progresso: escuro embaixo, claro em cima -->
     <item android:id="@android:id/progress">
-        <clip>
-            <shape>
+        <clip
+            android:clipOrientation="horizontal"
+            android:gravity="left">
+
+            <shape android:shape="rectangle">
                 <corners android:radius="2dp" />
-                <solid android:color="?attr/colorAccent" />
+
+                <gradient
+                    android:type="linear"
+                    android:angle="90"
+                    android:startColor="?attr/colorAccent"
+                    android:endColor="?attr/colorControlActivated" />
+
             </shape>
         </clip>
     </item>
+
 </layer-list>

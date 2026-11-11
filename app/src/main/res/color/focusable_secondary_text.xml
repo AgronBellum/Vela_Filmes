@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_focused="true" android:color="#FF101010" />
-    <item android:color="#FFAFA8C8" />
+
+    <!-- Texto secundário com foco -->
+    <item
+        android:state_focused="true"
+        android:color="#E6FFFFFF" />
+
+    <!-- Texto secundário pressionado -->
+    <item
+        android:state_pressed="true"
+        android:color="#E6FFFFFF" />
+
+    <!-- Texto secundário sem foco -->
+    <item
+        android:color="#B3FFFFFF" />
+
 </selector>
