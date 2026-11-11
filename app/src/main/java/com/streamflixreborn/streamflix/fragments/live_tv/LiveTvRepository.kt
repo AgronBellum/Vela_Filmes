@@ -26,6 +26,7 @@ object LiveTvRepository {
     private const val CHANNELS_URL = "https://raw.githubusercontent.com/AgronBellum/test_cachorro/refs/heads/main/canais.json"
     private const val EPG_INDEX_URL = "https://raw.githubusercontent.com/AgronBellum/test_cachorro/refs/heads/main/EP/lista.json"
     private const val CACHE_TTL_MS = 15 * 60 * 1000L
+    private const val CHANNEL_LIST_MAX_AGE_MS = 8 * 60 * 60 * 1000L
 
     val brazilZone: ZoneId = ZoneId.of("America/Sao_Paulo")
 
@@ -182,8 +183,9 @@ object LiveTvRepository {
 
     private fun isChannelListOutdated(json: String): Boolean = runCatching {
         val value = JSONObject(json).optJSONObject("metadata")?.optString("date").orEmpty()
-        val date = parseInstant(value)?.atZone(brazilZone)?.toLocalDate() ?: return@runCatching true
-        date.isBefore(LocalDate.now(brazilZone))
+        val updatedAt = parseInstant(value) ?: return@runCatching true
+        val ageMs = Instant.now().toEpochMilli() - updatedAt.toEpochMilli()
+        ageMs < 0L || ageMs >= CHANNEL_LIST_MAX_AGE_MS
     }.getOrDefault(true)
 
     suspend fun loadSchedule(channel: Channel): Schedule = withContext(Dispatchers.IO) {

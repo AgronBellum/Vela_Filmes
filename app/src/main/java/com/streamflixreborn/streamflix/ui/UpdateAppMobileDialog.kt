@@ -8,11 +8,11 @@ import android.view.WindowManager
 import androidx.core.view.isVisible
 import com.streamflixreborn.streamflix.BuildConfig
 import com.streamflixreborn.streamflix.databinding.DialogUpdateAppMobileBinding
-import com.streamflixreborn.streamflix.utils.GitHub
+import com.streamflixreborn.streamflix.utils.InAppUpdater
 
 class UpdateAppMobileDialog(
     context: Context,
-    newReleases: List<GitHub.Release>,
+    update: InAppUpdater.UpdateInfo,
 ) : Dialog(context) {
 
     private val binding = DialogUpdateAppMobileBinding.inflate(LayoutInflater.from(context))
@@ -31,14 +31,8 @@ class UpdateAppMobileDialog(
 
         binding.tvUpdateCurrentVersion.text = BuildConfig.VERSION_NAME
 
-        binding.tvUpdateNewVersion.text = newReleases.first().tagName.substringAfter("v")
-
-        binding.tvUpdateReleaseNotes.text = newReleases.map {
-            it.body?.replace(
-                Regex("^- ([a-z0-9]+: )?(.*?)(#\\d+ )?\$", RegexOption.MULTILINE),
-                "- $2"
-            )
-        }.joinToString("\n")
+        binding.tvUpdateNewVersion.text = update.versionName
+        binding.tvUpdateReleaseNotes.text = update.changelog
 
         binding.btnUpdateCancel.setOnClickListener {
             hide()

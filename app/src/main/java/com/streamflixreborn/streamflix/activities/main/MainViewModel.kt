@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.streamflixreborn.streamflix.utils.GitHub
 import com.streamflixreborn.streamflix.utils.InAppUpdater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +19,7 @@ class MainViewModel : ViewModel() {
 
     sealed class State {
         data object CheckingUpdate : State()
-        data class SuccessCheckingUpdate(val newReleases: List<GitHub.Release>, val asset: GitHub.Release.Asset) : State()
+        data class SuccessCheckingUpdate(val update: InAppUpdater.UpdateInfo) : State()
 
         data object DownloadingUpdate : State()
         data class SuccessDownloadingUpdate(val apk: File) : State()
@@ -36,13 +35,8 @@ class MainViewModel : ViewModel() {
         _state.emit(State.CheckingUpdate)
 
         try {
-            val newReleases = InAppUpdater.getNewReleases()
-            if (newReleases.isEmpty()) return@launch
-
-            val asset = InAppUpdater.getCompatibleAsset(newReleases.first())
-                ?: throw Exception("Can't find update APK")
-
-            _state.emit(State.SuccessCheckingUpdate(newReleases, asset))
+            val update = InAppUpdater.getUpdate() ?: return@launch
+            _state.emit(State.SuccessCheckingUpdate(update))
         } catch (e: Exception) {
             Log.e("MainViewModel", "checkUpdate: ", e)
             _state.emit(State.FailedUpdate(e))
@@ -51,12 +45,12 @@ class MainViewModel : ViewModel() {
 
     fun downloadUpdate(
         context: Context,
-        asset: GitHub.Release.Asset,
+        update: InAppUpdater.UpdateInfo,
     ) = viewModelScope.launch(Dispatchers.IO) {
         _state.emit(State.DownloadingUpdate)
 
         try {
-            val apk = InAppUpdater.downloadApk(context, asset)
+            val apk = InAppUpdater.downloadApk(context, update)
 
             _state.emit(State.SuccessDownloadingUpdate(apk))
         } catch (e: Exception) {

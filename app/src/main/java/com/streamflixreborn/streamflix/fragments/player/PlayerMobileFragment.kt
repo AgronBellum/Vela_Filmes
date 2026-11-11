@@ -92,6 +92,7 @@ import androidx.navigation.NavOptions
 import com.streamflixreborn.streamflix.utils.DnsResolver
 import com.streamflixreborn.streamflix.utils.NetworkClient
 import com.streamflixreborn.streamflix.utils.EpisodeManager
+import com.streamflixreborn.streamflix.utils.FanartLogoRepository
 import com.streamflixreborn.streamflix.utils.PlayerGestureHelper
 import com.streamflixreborn.streamflix.utils.UserDataCache.toEpisode
 import com.streamflixreborn.streamflix.utils.UserDataCache.toMovie
@@ -264,6 +265,7 @@ class PlayerMobileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupServerLoadingBackdrop()
+        setupLoadingIdentity()
         initializePlayer(false)
         initializeVideo()
         gestureHelper = PlayerGestureHelper(
@@ -1104,6 +1106,13 @@ class PlayerMobileFragment : Fragment() {
         }
 
         player.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                when (playbackState) {
+                    Player.STATE_BUFFERING -> showPlaybackBuffering(true)
+                    Player.STATE_READY, Player.STATE_ENDED, Player.STATE_IDLE -> showPlaybackBuffering(false)
+                }
+            }
+
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 super.onIsPlayingChanged(isPlaying)
                 binding.pvPlayer.keepScreenOn = isPlaying || UserPreferences.keepScreenOnWhenPaused
@@ -1451,8 +1460,21 @@ class PlayerMobileFragment : Fragment() {
         Glide.with(this).load(image).centerCrop().into(binding.ivServerLoadingBackdrop)
     }
 
+    private fun setupLoadingIdentity() {
+        val title = resolvePlayerTitle(args.videoType)
+        binding.serverLoadingLogo.setTitle(title)
+        binding.playbackLoadingLogo.setTitle(title)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val logo = FanartLogoRepository.findLogo(args.videoType)
+            if (_binding == null) return@launch
+            binding.serverLoadingLogo.setLogo(logo)
+            binding.playbackLoadingLogo.setLogo(logo)
+        }
+    }
+
     private fun showServerSearchLoading() {
         binding.llServerLoading.isVisible = true
+        binding.serverLoadingLogo.startLoading()
         binding.pbServerSearch.isIndeterminate = false
         binding.tvServerSearchPercent.isVisible = true
         binding.tvServerSearchStatus.setText(R.string.player_searching_server)
@@ -1461,10 +1483,23 @@ class PlayerMobileFragment : Fragment() {
     private fun showServerLoading(show: Boolean) {
         binding.llServerLoading.isVisible = show
         if (show) {
+            binding.serverLoadingLogo.startLoading()
+            showPlaybackBuffering(false)
             binding.pbServerSearch.isIndeterminate = true
             binding.tvServerSearchPercent.isVisible = false
             binding.tvServerSearchStatus.setText(R.string.player_opening_source)
+        } else {
+            binding.serverLoadingLogo.stopLoading()
+            if (::player.isInitialized && player.playbackState == Player.STATE_BUFFERING) {
+                showPlaybackBuffering(true)
+            }
         }
+    }
+
+    private fun showPlaybackBuffering(show: Boolean) {
+        val visible = show && !binding.llServerLoading.isVisible
+        binding.playbackBufferingOverlay.isVisible = visible
+        if (visible) binding.playbackLoadingLogo.startLoading() else binding.playbackLoadingLogo.stopLoading()
     }
 
     companion object {

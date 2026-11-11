@@ -9,80 +9,94 @@ import androidx.core.content.FileProvider
 import com.streamflixreborn.streamflix.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
-import kotlin.math.max
 
 object InAppUpdater {
 
-    // MUDAR AQUI: Seu GitHub
-    private const val GITHUB_OWNER = "AgronBellum"
-    private const val GITHUB_REPO = "Vela_Filmes"
+    private const val VERSION_URL =
+        "https://raw.githubusercontent.com/AgronBellum/Vela_Filmes/main/version.json"
 
-    private data class Version(val name: String) : Comparable<Version> {
-        override operator fun compareTo(other: Version): Int {
-            val thisParts = this.name.split(".").toTypedArray()
-            val thatParts = other.name.split(".").toTypedArray()
-            for (i in 0 until max(thisParts.size, thatParts.size)) {
-                val thisPart = thisParts.getOrNull(i)?.toIntOrNull() ?: 0
-                val thatPart = thatParts.getOrNull(i)?.toIntOrNull() ?: 0
-                if (thisPart < thatPart) return -1
-                if (thisPart > thatPart) return 1
+    private val json = Json { ignoreUnknownKeys = true }
+
+    @Serializable
+    data class UpdateInfo(
+        val versionCode: Int,
+        val versionName: String,
+        val apkUrl: String,
+        val changelog: String = "",
+    )
+
+    suspend fun getUpdate(): UpdateInfo? = withContext(Dispatchers.IO) {
+        val separator = if (VERSION_URL.contains('?')) '&' else '?'
+        val connection = (URL("$VERSION_URL${separator}t=${System.currentTimeMillis()}")
+            .openConnection() as HttpURLConnection).apply {
+            connectTimeout = 15_000
+            readTimeout = 20_000
+            instanceFollowRedirects = true
+            useCaches = false
+            setRequestProperty("Cache-Control", "no-cache")
+            setRequestProperty("User-Agent", "Vela/${BuildConfig.VERSION_NAME}")
+        }
+
+        try {
+            val status = connection.responseCode
+            if (status !in 200..299) {
+                throw IllegalStateException("Falha ao verificar atualização: HTTP $status")
             }
-            return 0
-        }
-    }
 
-    suspend fun getReleaseUpdate(): GitHub.Release? {
-        val latestRelease = GitHub.Releases.getLatestRelease(GITHUB_OWNER, GITHUB_REPO)
-        val currentVersion = BuildConfig.VERSION_NAME
-
-        if (Version(latestRelease.tagName.substringAfter("v")) > Version(currentVersion)) {
-            return latestRelease
-        }
-        return null
-    }
-
-    suspend fun getNewReleases(): List<GitHub.Release> {
-        val releases = GitHub.Releases.getReleases(GITHUB_OWNER, GITHUB_REPO)
-        val currentVersion = BuildConfig.VERSION_NAME
-
-        val newReleases = releases
-            .filter { Version(it.tagName.substringAfter("v")) > Version(currentVersion) }
-            .filter { getCompatibleAsset(it) != null }
-
-        return newReleases
-    }
-
-    fun getCompatibleAsset(release: GitHub.Release): GitHub.Release.Asset? =
-        release.assets.firstOrNull { asset ->
-            asset.name.endsWith(".apk", ignoreCase = true) && when (BuildConfig.APP_LAYOUT) {
-                "mobile" -> !asset.name.endsWith("-tv.apk", ignoreCase = true)
-                "tv" -> asset.name.endsWith("-tv.apk", ignoreCase = true)
-                else -> !asset.name.endsWith("-mobile.apk", ignoreCase = true) &&
-                    !asset.name.endsWith("-tv.apk", ignoreCase = true)
+            val info = connection.inputStream.bufferedReader().use { reader ->
+                json.decodeFromString<UpdateInfo>(reader.readText())
             }
-        }
 
-    suspend fun downloadApk(context: Context, asset: GitHub.Release.Asset): File {
+            info.takeIf {
+                it.versionCode > BuildConfig.VERSION_CODE &&
+                    it.versionName.isNotBlank() &&
+                    it.apkUrl.startsWith("https://")
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    suspend fun downloadApk(context: Context, update: UpdateInfo): File {
         context.cacheDir.listFiles()
             ?.filter { it.extension == "apk" }
             ?.forEach { it.delete() }
 
-        val apk = File(context.cacheDir, "update-${asset.id}.apk")
+        val apk = File(context.cacheDir, "vela-${update.versionCode}.apk")
 
         withContext(Dispatchers.IO) {
-            val connection = (URL(asset.browserDownloadUrl).openConnection() as HttpURLConnection).apply {
+            val connection = (URL(update.apkUrl).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 20_000
                 readTimeout = 60_000
                 instanceFollowRedirects = true
+                setRequestProperty("User-Agent", "Vela/${BuildConfig.VERSION_NAME}")
             }
-            connection.inputStream.use { input ->
-                FileOutputStream(apk).use { output -> input.copyTo(output) }
+
+            try {
+                val status = connection.responseCode
+                if (status !in 200..299) {
+                    throw IllegalStateException("Falha ao baixar atualização: HTTP $status")
+                }
+
+                connection.inputStream.use { input ->
+                    FileOutputStream(apk).use { output -> input.copyTo(output) }
+                }
+            } finally {
+                connection.disconnect()
             }
-            connection.disconnect()
+
+            if (apk.length() < 100_000L || apk.inputStream().use { input ->
+                    input.read() != 'P'.code || input.read() != 'K'.code
+                }) {
+                apk.delete()
+                throw IllegalStateException("O arquivo baixado não é um APK válido")
+            }
         }
 
         return apk

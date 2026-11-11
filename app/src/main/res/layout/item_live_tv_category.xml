@@ -21,7 +21,7 @@
         android:layout_weight="1"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textColor="#F4F0FF"
+        android:textColor="#FFFFFF"
         android:textSize="13sp"
         android:textStyle="bold"
         tools:text="Filmes e Series" />
@@ -36,7 +36,7 @@
         android:minWidth="28dp"
         android:paddingStart="7dp"
         android:paddingEnd="7dp"
-        android:textColor="#DCD6FF"
+        android:textColor="?attr/colorAccent"
         android:textSize="10sp"
         android:textStyle="bold"
         tools:text="32" />

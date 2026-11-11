@@ -15,7 +15,7 @@
         android:id="@+id/tv_live_tv_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="TV"
+        android:text="@string/main_menu_live_tv"
         android:textColor="#FFFFFF"
         android:textSize="30sp"
         android:textStyle="bold"
@@ -28,7 +28,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:text="Programacao em horario de Brasilia"
-        android:textColor="#BFB9DD"
+        android:textColor="?attr/colorAccent"
         android:textSize="13sp"
         app:layout_constraintStart_toStartOf="@id/tv_live_tv_title"
         app:layout_constraintTop_toBottomOf="@id/tv_live_tv_title" />
@@ -120,7 +120,7 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textColor="#AFA3D8"
+            android:textColor="?attr/colorAccent"
             android:textSize="13sp"
             android:textStyle="bold"
             tools:text="Documentarios" />
@@ -174,7 +174,7 @@
             android:layout_marginTop="12dp"
             android:backgroundTint="#2B2350"
             android:max="100"
-            android:progressTint="#7C5CFF"
+            android:progressTint="?attr/colorAccent"
             tools:progress="62" />
 
         <TextView
@@ -239,7 +239,7 @@
         android:indeterminate="false"
         android:max="100"
         android:progress="0"
-        android:progressTint="#7C5CFF"
+        android:progressTint="?attr/colorAccent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

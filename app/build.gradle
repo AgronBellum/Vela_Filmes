@@ -42,13 +42,14 @@ android {
         applicationId "com.streamflixreborn.streamflix"
         minSdk 21
         targetSdk 35
-        versionCode 160
-        versionName "1.7.130"
+        versionCode 161
+        versionName "1.7.131"
 
         buildConfigField "String", "APP_LAYOUT", "\"${properties.getProperty("APP_LAYOUT")}\""
         buildConfigField "String", "TMDB_API_KEY", "\"${properties.getProperty("TMDB_API_KEY")}\""
         buildConfigField "String", "SUBDL_API_KEY", "\"${properties.getProperty("SUBDL_API_KEY")}\""
         buildConfigField "String", "RABBITSTREAM_SOURCE_API", "\"${properties.getProperty("RABBITSTREAM_SOURCE_API")}\""
+        buildConfigField "String", "FANART_API_KEY", "\"${properties.getProperty("FANART_API_KEY", "")}\""
         def githubChannelsToken = envProperties.getProperty('GITHUB_CHANNELS_TOKEN', '')
             .replace('\\', '\\\\')
             .replace('"', '\\"')

@@ -36,6 +36,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 class LiveTvPlayerTvFragment : Fragment() {
     private var _binding: FragmentLiveTvPlayerTvBinding? = null
@@ -60,6 +61,13 @@ class LiveTvPlayerTvFragment : Fragment() {
     private var displayedCategoryId: String? = null
     private var epgJob: Job? = null
     private var categoryEpgJob: Job? = null
+    private val playbackHttpClient by lazy {
+        LiveTvRepository.httpClient.newBuilder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
     private val epgTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale("pt", "BR"))
         .withZone(LiveTvRepository.brazilZone)
 
@@ -457,7 +465,13 @@ class LiveTvPlayerTvFragment : Fragment() {
     private fun initializePlayer() {
         val dataSourceFactory = buildDataSourceFactory()
         val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(8_000, 35_000, 1_000, 2_500)
+            .setBufferDurationsMs(
+                LIVE_MIN_BUFFER_MS,
+                LIVE_MAX_BUFFER_MS,
+                LIVE_PLAYBACK_BUFFER_MS,
+                LIVE_REBUFFER_MS,
+            )
+            .setBackBuffer(LIVE_BACK_BUFFER_MS, true)
             .build()
 
         player = ExoPlayer.Builder(requireContext())
@@ -475,7 +489,10 @@ class LiveTvPlayerTvFragment : Fragment() {
                 binding.pvLivePlayer.player = exoPlayer
                 exoPlayer.addListener(object : Player.Listener {
                     override fun onPlaybackStateChanged(playbackState: Int) {
-                        if (playbackState == Player.STATE_READY) binding.groupLivePlayerError.visibility = View.GONE
+                        if (playbackState == Player.STATE_READY) {
+                            reconnectAttempts = 0
+                            binding.groupLivePlayerError.visibility = View.GONE
+                        }
                     }
 
                     override fun onPlayerError(error: PlaybackException) {
@@ -497,9 +514,11 @@ class LiveTvPlayerTvFragment : Fragment() {
             .setMediaMetadata(MediaMetadata.Builder().setTitle(channel.name).build())
             .setLiveConfiguration(
                 MediaItem.LiveConfiguration.Builder()
-                    .setTargetOffsetMs(10_000)
-                    .setMinOffsetMs(3_000)
-                    .setMaxOffsetMs(35_000)
+                    .setTargetOffsetMs(LIVE_TARGET_OFFSET_MS)
+                    .setMinOffsetMs(LIVE_MIN_OFFSET_MS)
+                    .setMaxOffsetMs(LIVE_MAX_OFFSET_MS)
+                    .setMinPlaybackSpeed(0.97f)
+                    .setMaxPlaybackSpeed(1.03f)
                     .build()
             )
             .build()
@@ -520,7 +539,7 @@ class LiveTvPlayerTvFragment : Fragment() {
             putIfAbsent("Accept", "*/*")
             putIfAbsent("Accept-Language", "pt-BR,pt;q=0.9,en-US;q=0.7")
         }
-        return OkHttpDataSource.Factory(LiveTvRepository.httpClient)
+        return OkHttpDataSource.Factory(playbackHttpClient)
             .setDefaultRequestProperties(headers)
     }
 
@@ -564,6 +583,17 @@ class LiveTvPlayerTvFragment : Fragment() {
         binding.groupLivePlayerError.visibility = View.VISIBLE
         binding.tvLivePlayerError.text = if (willRetry) "Reconectando ao canal..." else message
         showInfoOverlayTemporarily()
+    }
+
+    companion object {
+        private const val LIVE_MIN_BUFFER_MS = 25_000
+        private const val LIVE_MAX_BUFFER_MS = 90_000
+        private const val LIVE_PLAYBACK_BUFFER_MS = 2_500
+        private const val LIVE_REBUFFER_MS = 7_000
+        private const val LIVE_BACK_BUFFER_MS = 30_000
+        private const val LIVE_TARGET_OFFSET_MS = 25_000L
+        private const val LIVE_MIN_OFFSET_MS = 15_000L
+        private const val LIVE_MAX_OFFSET_MS = 60_000L
     }
 }
 

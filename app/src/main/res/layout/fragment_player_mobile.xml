@@ -17,7 +17,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:resize_mode="fit"
-        app:show_buffering="always"
+        app:show_buffering="never"
         app:show_next_button="false"
         app:show_previous_button="false"
         app:show_subtitle_button="true"
@@ -144,7 +144,7 @@
         <View
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:background="#99060412"
+            android:background="#99000000"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -153,7 +153,7 @@
         <LinearLayout
             android:layout_width="320dp"
             android:layout_height="wrap_content"
-            android:background="#D9161326"
+            android:background="#D9000000"
             android:gravity="center"
             android:orientation="vertical"
             android:padding="22dp"
@@ -161,6 +161,12 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent">
+
+            <com.streamflixreborn.streamflix.ui.ProgressiveTitleLoaderView
+                android:id="@+id/server_loading_logo"
+                android:layout_width="match_parent"
+                android:layout_height="86dp"
+                android:layout_marginBottom="12dp" />
 
             <TextView
                 android:id="@+id/tv_server_search_status"
@@ -193,5 +199,28 @@
                 android:textSize="15sp"
                 android:textStyle="bold" />
         </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/playback_buffering_overlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#66000000"
+        android:clickable="false"
+        android:focusable="false"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <com.streamflixreborn.streamflix.ui.ProgressiveTitleLoaderView
+            android:id="@+id/playback_loading_logo"
+            android:layout_width="280dp"
+            android:layout_height="105dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

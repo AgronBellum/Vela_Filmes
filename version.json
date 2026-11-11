@@ -1,6 +1,6 @@
 {
-  "versionCode": 160,
-  "versionName": "1.7.130",
+  "versionCode": 161,
+  "versionName": "1.7.131",
   "apkUrl": "https://github.com/AgronBellum/Vela_Filmes/releases/latest/download/app-debug.apk",
-  "changelog": "EPG corrigido com suporte a variantes de canais; foco roxo e centralizado nos catálogos; busca de servidores com banner e progresso de 0 a 100%"
+  "changelog": "Novo carregamento visual com logotipos dos filmes e séries; TV ao vivo mais fluida e integrada ao tema escolhido; canais atualizados automaticamente a cada 8 horas; melhorias no EPG, menus e foco para controle remoto; correções no atualizador automático e maior estabilidade das fontes."
 }

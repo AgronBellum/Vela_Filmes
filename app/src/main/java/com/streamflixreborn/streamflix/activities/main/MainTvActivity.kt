@@ -133,9 +133,9 @@ class MainTvActivity : FragmentActivity() {
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
                 when (state) {
                     is MainViewModel.State.SuccessCheckingUpdate -> {
-                        updateAppDialog = UpdateAppTvDialog(this@MainTvActivity, state.newReleases).also {
+                        updateAppDialog = UpdateAppTvDialog(this@MainTvActivity, state.update).also {
                             it.setOnUpdateClickListener { _ ->
-                                if (!it.isLoading) viewModel.downloadUpdate(this@MainTvActivity, state.asset)
+                                if (!it.isLoading) viewModel.downloadUpdate(this@MainTvActivity, state.update)
                             }
                             it.show()
                         }

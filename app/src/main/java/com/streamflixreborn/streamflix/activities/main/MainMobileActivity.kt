@@ -259,10 +259,10 @@ class MainMobileActivity : FragmentActivity() {
         if (isFinishing || isDestroyed) return
 
         dismissUpdateDialog()
-        updateAppDialog = UpdateAppMobileDialog(this, state.newReleases).also { dialog ->
+        updateAppDialog = UpdateAppMobileDialog(this, state.update).also { dialog ->
             dialog.setOnUpdateClickListener {
                 if (!dialog.isLoading) {
-                    viewModel.downloadUpdate(this@MainMobileActivity, state.asset)
+                    viewModel.downloadUpdate(this@MainMobileActivity, state.update)
                 }
             }
             dialog.show()

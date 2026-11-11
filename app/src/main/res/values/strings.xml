@@ -8,7 +8,7 @@
     <string name="loading_error_details">Detalhes do erro</string>
 
     <string name="update_title">Nova atualiza&#231;&#227;o dispon&#237;vel</string>
-    <string name="update_message">Uma nova vers&#227;o do app est&#225; dispon&#237;vel!</string>
+    <string name="update_message">Ol&#225; marinheiros, uma nova vers&#227;o do Vela Filmes est&#225; dispon&#237;vel!</string>
     <string name="update_current_version_label">Vers&#227;o atual</string>
     <string name="update_new_version_label">Nova vers&#227;o</string>
     <string name="update_release_notes">Notas da vers&#227;o</string>
@@ -507,7 +507,7 @@
     <string name="player_settings_subtitle_advance_label">Adiantar legenda (-0,5s)</string>
     <string name="player_settings_subtitle_delay_label">Atrasar legenda (+0,5s)</string>
     <string name="player_settings_subtitle_offset_reset_label">Resetar sincroniza&#231;&#227;o</string>
-    <string name="main_menu_live_tv">TV</string>
+    <string name="main_menu_live_tv">TV AO VIVO</string>
     <string name="live_tv_loading">Carregando canais...</string>
     <string name="live_tv_refresh">Atualizar Canais</string>
     <string name="live_tv_empty">Nenhum canal encontrado.</string>
