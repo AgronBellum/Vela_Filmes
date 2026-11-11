@@ -1,158 +1,107 @@
-<h1 align="center">Streamflix Reborn</h1>
+# Vela Filmes
 
 <p align="center">
-  <img src="./app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" height="100px" />
-  <br />
-  <strong>🔄 Reborn Version</strong> - Community continuation of the original Streamflix project
-  <br />
-  An open-source Android TV and mobile app for educational streaming interface, made with Android Studio, in Kotlin
-  <br />
-  <a href="https://github.com/streamflix-reborn/streamflix/releases/latest">
-    <strong>Download app »</strong>
-  </a>
-  <br />
-  <br />
-  <a href="https://github.com/streamflix-reborn/streamflix/issues">Report Bug</a>
-  ·
-  <a href="https://github.com/streamflix-reborn/streamflix/issues">Request Feature</a>
+  <img src="./app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" height="100px" alt="Vela Filmes">
 </p>
-
-<details>
-  <summary>Table of Contents</summary>
-
-- [About the project](#about-the-project)
-  - [What is Streamflix Reborn?](#-what-is-streamflix-reborn)
-  - [Features](#features)
-  - [Built with](#built-with)
-- [Getting started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Setup](#setup)
-- [Development](#development)
-- [Contributing](#contributing)
-- [Legal Disclaimer](#legal-disclaimer)
-- [Credits & Authors](#credits--authors)
-- [License](#license)
-</details>
-
-## About the project
 
 <p align="center">
-  <img src="./.github/docs/screenshot.png" alt="Streamflix Preview">
+  Aplicativo para Android TV e dispositivos móveis, com filmes, séries e TV ao vivo.
 </p>
 
-**Streamflix Reborn** is an independent continuation of the original Streamflix project created by [Lory-Stan TANASI](https://github.com/stantanasi). This reborn version maintains the same educational purpose and functionality while ensuring continued development and support.
+## Sobre o projeto
 
-### 🔄 What is Streamflix Reborn?
+O Vela Filmes é um aplicativo para Android que reúne filmes, séries e canais de TV ao vivo em uma única interface.
 
-- **Independent Continuation**: This is an independent continuation of the original Streamflix project
-- **Same Vision**: Maintains the original educational and open-source philosophy
-- **Enhanced Support**: Continued development and bug fixes by an independent developer
-- **Respectful Fork**: Built with full respect for the original creator's work
+A proposta é oferecer uma navegação simples e organizada, permitindo encontrar conteúdos por gênero, ano, categoria e outros filtros.
 
-Streamflix Reborn is an open-source Android TV and mobile app that provides a user interface for accessing publicly available streaming content from various third-party providers.
+Os filmes e séries podem ser reproduzidos em áudio original, com legendas ou dublados em português, dependendo da disponibilidade das fontes.
 
-This app is designed for educational purposes and personal use only. Users are responsible for ensuring they have proper authorization to access any content they view through this application.
+O aplicativo também possui uma seção dedicada à televisão ao vivo, integrada à mesma interface.
 
-The interface aggregates content from multiple sources and provides a convenient way to browse available streaming options.
+O desenvolvimento é voltado principalmente para Android TV e TV Box, mas o aplicativo também funciona em smartphones e tablets Android.
 
-### Features
+O projeto surgiu a partir do Streamflix, criado por Lory-Stan TANASI, e passou por modificações e adaptações para atender às necessidades do Vela Filmes.
 
-- Open-source and ad-free interface
-- Aggregates content from multiple third-party providers
-- No account required for the app interface
-- Educational and personal use only
-- Optimized UI & UX
-- Multiple providers
-- Resume from last playback position
-- In-app update
+## Funcionalidades
 
-### Built with
+- Catálogo de filmes e séries organizado por categorias.
+- Pesquisa e filtros por gênero, ano e outros critérios.
+- Reprodução de conteúdos em áudio original ou dublado.
+- Suporte a legendas e seleção de idioma.
+- Canais de televisão ao vivo.
+- Player integrado com controles de reprodução.
+- Histórico e opção de continuar assistindo.
+- Organização de séries por temporadas e episódios.
+- Diferentes temas para personalização da interface.
+- Navegação por controle remoto em Android TV.
+- Interface adaptada para dispositivos móveis.
+- Integração com fontes externas de conteúdo.
 
-- [Android Studio](https://developer.android.com/studio)
-- [Kotlin](https://kotlinlang.org)
-- [Retrofit](https://square.github.io/retrofit)
-- [ExoPlayer](https://exoplayer.dev)
+Algumas funcionalidades dependem da disponibilidade das fontes e da compatibilidade do dispositivo.
+
+## Tecnologias utilizadas
+
+O aplicativo é desenvolvido em Kotlin, utilizando o Android Studio como ambiente de desenvolvimento.
+
+As principais tecnologias e bibliotecas utilizadas são:
+
+- Kotlin
+- Android SDK e AndroidX
+- Media3 / ExoPlayer
+- Retrofit
+- OkHttp
+- Jsoup
+- Glide
+- Kotlin Coroutines
 - Leanback
-- Coroutines
-- MVVM Architecture
-- Android Architecture Components
+- Gradle
 
+## Compilação
 
-## Getting started
+Para compilar o aplicativo, é necessário ter o Android Studio, o Android SDK e uma versão compatível do JDK instalados.
 
-### Prerequisites
+Depois de obter o código-fonte, abra o projeto no Android Studio e aguarde a sincronização das dependências.
 
-Install [Android Studio](https://developer.android.com/studio)
+Configure o arquivo `local.properties` com as informações necessárias para os serviços utilizados pelo aplicativo.
 
-### Setup
+Para gerar uma versão de desenvolvimento, execute na raiz do projeto:
 
-1. Clone the project to your local machine
-
-```bash
-git clone https://github.com/streamflix-reborn/streamflix.git
+```powershell
+.\gradlew assembleDebug --no-configuration-cache
 ```
 
-2. Open the project in Android Studio
+O APK gerado ficará normalmente em:
 
-## Development
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
 
-1. Select the device that you want to run the app
+## Desenvolvimento
 
-2. Click **Run**
+O Vela Filmes está em desenvolvimento e recebe alterações frequentes.
 
-## Contributing
+O trabalho envolve melhorias na interface, organização do catálogo, reprodução de vídeos, integração de fontes e compatibilidade com diferentes versões do Android.
 
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+Uma das prioridades é manter uma boa experiência em televisores e TV Boxes, inclusive nos dispositivos com hardware mais limitado.
 
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'feat: add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a pull request
+## Créditos
 
-## Legal Disclaimer
+O Vela Filmes foi desenvolvido a partir do projeto Streamflix e de sua continuação comunitária, Streamflix Reborn.
 
-**IMPORTANT: This application is for educational and personal use only.**
+O projeto original foi criado por [Lory-Stan TANASI](https://github.com/stantanasi).
 
-- Streamflix does not host, store, or distribute any copyrighted content
-- All content is sourced from third-party providers and websites
-- Users are solely responsible for ensuring they have legal rights to access any content
-- The developers do not endorse or encourage copyright infringement
-- Users must comply with all applicable laws in their jurisdiction
-- Any legal issues should be directed to the actual content providers
-- This app functions as a search engine aggregator only
-- No copyrighted material is stored on our servers
+O código original e as contribuições anteriores são reconhecidos e preservados conforme as condições de suas respectivas licenças.
 
-## Legal Notice
+## Aviso legal
 
-This application is provided "as is" for educational purposes. The developers:
-- Do not claim ownership of any content
-- Do not profit from copyrighted material
-- Do not control third-party content providers
-- Encourage users to support content creators through legal means
-- Recommend using official streaming services when available
+O Vela Filmes utiliza informações e recursos disponibilizados por serviços e fontes externas.
 
-## Credits & Authors
+Os direitos sobre filmes, séries, canais, imagens e demais conteúdos pertencem aos seus respectivos titulares.
 
-### Original Creator
-- **[Lory-Stan TANASI](https://github.com/stantanasi)** - Original Streamflix project creator
+O aplicativo não concede autorização para acessar ou distribuir conteúdos protegidos por direitos autorais. Cada usuário é responsável por utilizar fontes e serviços de maneira legal.
 
-### Reborn Development
-- **Independent Developer** - Streamflix Reborn maintainer
-- **Special thanks** to the original creator for the excellent foundation
+## Licença
 
-## License
+O projeto original Streamflix foi disponibilizado sob a licença Apache 2.0.
 
-This project is licensed under the `Apache-2.0` License - see the [LICENSE](LICENSE) file for details
-
-### Original Project
-<p align="center">
-  <br />
-  © 2022 Lory-Stan TANASI. All rights reserved
-</p>
-
-### Reborn Project
-<p align="center">
-  <br />
-  © 2025 Streamflix Reborn. Built with respect for the original work.
-</p>
+As condições de licença e os avisos de autoria aplicáveis ao código derivado devem ser preservados. Consulte o arquivo [LICENSE](LICENSE) para mais informações.
