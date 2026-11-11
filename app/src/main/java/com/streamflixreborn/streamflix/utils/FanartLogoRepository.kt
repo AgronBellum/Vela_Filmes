@@ -33,10 +33,13 @@ object FanartLogoRepository {
                 fields = listOf("hdtvlogo", "clearlogo", "tvlogo"),
             )
         }
+
         logoCache[lookup.cacheKey]?.let { return@withContext it }
         if (lookup.cacheKey in missingLogos) return@withContext null
 
-        val logo = findFanartLogo(lookup, apiKey) ?: findTmdbLogo(lookup)
+        // Tenta buscar primeiro no TMDB (maior disponibilidade em PT-BR) e depois no Fanart.tv
+        val logo = findTmdbLogo(lookup) ?: findFanartLogo(lookup, apiKey)
+
         if (logo == null) {
             missingLogos += lookup.cacheKey
             Log.w(TAG, "Logo não encontrada para ${lookup.cacheKey}")
@@ -44,6 +47,48 @@ object FanartLogoRepository {
             logoCache[lookup.cacheKey] = logo
         }
         logo
+    }
+
+    private fun findTmdbLogo(lookup: Lookup): String? {
+        val apiKey = UserPreferences.tmdbApiKey.ifBlank { BuildConfig.TMDB_API_KEY }.trim()
+        if (apiKey.isBlank() || apiKey.equals("null", ignoreCase = true)) return null
+
+        return runCatching {
+            val mediaType = if (lookup.resource == "movies") "movie" else "tv"
+            val resultsField = if (mediaType == "movie") "movie_results" else "tv_results"
+
+            val tmdbId = lookup.tmdbIdCandidate?.toIntOrNull()?.takeIf { it > 0 } ?: run {
+                val imdbId = lookup.imdbId?.takeIf { it.startsWith("tt") }
+                    ?: return@runCatching null
+                val findUrl = "https://api.themoviedb.org/3/find/$imdbId" +
+                    "?api_key=$apiKey&external_source=imdb_id"
+                val findRoot = getJson(findUrl) ?: return@runCatching null
+
+                val firstResult = findRoot.optJSONArray(resultsField)?.optJSONObject(0)
+                    ?: return@runCatching null
+
+                // Garante a leitura correta do ID mesmo se a API retornar como int ou string
+                firstResult.optInt("id", -1).takeIf { it > 0 }
+                    ?: firstResult.optString("id").toIntOrNull()?.takeIf { it > 0 }
+                    ?: return@runCatching null
+            }
+
+            val imagesUrl = "https://api.themoviedb.org/3/$mediaType/$tmdbId/images" +
+                "?api_key=$apiKey&include_image_language=pt-BR,pt,en,null"
+            val logos = getJson(imagesUrl)?.optJSONArray("logos") ?: return@runCatching null
+
+            val selected = (0 until logos.length())
+                .mapNotNull(logos::optJSONObject)
+                .sortedWith(
+                    compareBy<JSONObject> { languagePriority(it.optString("iso_639_1")) }
+                        .thenByDescending { it.optDouble("vote_average", 0.0) }
+                )
+                .firstOrNull()
+                ?: return@runCatching null
+
+            selected.optString("file_path").takeIf(String::isNotBlank)
+                ?.let { "https://image.tmdb.org/t/p/w500$it" }
+        }.getOrNull()
     }
 
     private fun findFanartLogo(lookup: Lookup, apiKey: String): String? {
@@ -62,42 +107,6 @@ object FanartLogoRepository {
                 val root = JSONObject(response.body?.string().orEmpty())
                 chooseLogo(lookup.fields.mapNotNull(root::optJSONArray))
             }
-        }.getOrNull()
-    }
-
-    private fun findTmdbLogo(lookup: Lookup): String? {
-        val apiKey = UserPreferences.tmdbApiKey.ifBlank { BuildConfig.TMDB_API_KEY }.trim()
-        if (apiKey.isBlank() || apiKey.equals("null", ignoreCase = true)) return null
-
-        return runCatching {
-            val mediaType = if (lookup.resource == "movies") "movie" else "tv"
-            val resultsField = if (mediaType == "movie") "movie_results" else "tv_results"
-            val tmdbId = lookup.tmdbIdCandidate?.toIntOrNull()?.takeIf { it > 0 } ?: run {
-                val imdbId = lookup.imdbId?.takeIf { it.startsWith("tt") }
-                    ?: return@runCatching null
-                val findUrl = "https://api.themoviedb.org/3/find/$imdbId" +
-                    "?api_key=$apiKey&external_source=imdb_id"
-                val findRoot = getJson(findUrl) ?: return@runCatching null
-                findRoot.optJSONArray(resultsField)
-                    ?.optJSONObject(0)
-                    ?.optInt("id")
-                    ?.takeIf { it > 0 }
-                    ?: return@runCatching null
-            }
-
-            val imagesUrl = "https://api.themoviedb.org/3/$mediaType/$tmdbId/images" +
-                "?api_key=$apiKey&include_image_language=pt,en,null"
-            val logos = getJson(imagesUrl)?.optJSONArray("logos") ?: return@runCatching null
-            val selected = (0 until logos.length())
-                .mapNotNull(logos::optJSONObject)
-                .sortedWith(
-                    compareBy<JSONObject> { languagePriority(it.optString("iso_639_1")) }
-                        .thenByDescending { it.optDouble("vote_average", 0.0) }
-                )
-                .firstOrNull()
-                ?: return@runCatching null
-            selected.optString("file_path").takeIf(String::isNotBlank)
-                ?.let { "https://image.tmdb.org/t/p/w500$it" }
         }.getOrNull()
     }
 
@@ -126,7 +135,7 @@ object FanartLogoRepository {
     private fun languagePriority(language: String): Int = when (language.lowercase()) {
         "pt", "pt-br" -> 0
         "en" -> 1
-        "", "00" -> 2
+        "", "00", "null" -> 2
         else -> 3
     }
 

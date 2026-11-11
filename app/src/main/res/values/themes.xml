@@ -8,7 +8,11 @@
         <item name="movie_banner_gradient_drawable">@drawable/bg_movie_banner_gradient_violet</item>
         <item name="tv_show_banner_gradient_drawable">@drawable/bg_tv_show_banner_gradient_violet</item>
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_violet</item>
-        <item name="colorAccent">#7C5CFF</item>
+        <item name="colorAccent">#49358F</item>
+        <item name="colorControlActivated">#A78BFA</item>
+        <item name="colorControlNormal">#BFB9DD</item>
+        <item name="android:textColorPrimary">#F1EEFF</item>
+        <item name="android:textColorSecondary">#BFB9DD</item>
         <item name="android:windowBackground">@drawable/bg_splash_screen_violet</item>
     </style>
 
@@ -22,6 +26,8 @@
         <item name="android:windowBackground">@drawable/bg_splash_screen_amoled</item>
         <item name="android:colorBackground">#000000</item>
         <item name="colorAccent">#FFFFFF</item>
+        <item name="colorControlActivated">#FFFFFF</item>
+        <item name="colorControlNormal">#BDBDBD</item>
         <item name="android:textColorPrimary">#FFFFFF</item>
         <item name="android:textColorSecondary">#BDBDBD</item>
         <item name="alertDialogTheme">@style/Theme.Amoled.Dialog.Alert</item>
@@ -36,6 +42,8 @@
         <item name="android:windowBackground">@drawable/bg_splash_screen_sunset</item>
         <item name="android:colorBackground">#201410</item>
         <item name="colorAccent">#F39A5B</item>
+        <item name="colorControlActivated">#FFB879</item>
+        <item name="colorControlNormal">#D7B7A4</item>
         <item name="android:textColorPrimary">#FFF0E5</item>
         <item name="android:textColorSecondary">#D7B7A4</item>
         <item name="home_gradient_drawable">@drawable/bg_home_gradient_sunset</item>
@@ -49,6 +57,8 @@
         <item name="android:windowBackground">@drawable/bg_splash_screen_steel</item>
         <item name="android:colorBackground">#141C25</item>
         <item name="colorAccent">#7DB3E8</item>
+        <item name="colorControlActivated">#91C9FF</item>
+        <item name="colorControlNormal">#ADC5DA</item>
         <item name="android:textColorPrimary">#EAF4FF</item>
         <item name="android:textColorSecondary">#ADC5DA</item>
         <item name="home_gradient_drawable">@drawable/bg_home_gradient_steel</item>
@@ -61,7 +71,9 @@
         <item name="app_background_color">#101816</item>
         <item name="android:windowBackground">@drawable/bg_splash_screen_forest</item>
         <item name="android:colorBackground">#101816</item>
-        <item name="colorAccent">#65D7C2</item>
+        <item name="colorAccent">#267D6E</item>
+        <item name="colorControlActivated">#7DE9D2</item>
+        <item name="colorControlNormal">#A8D1C7</item>
         <item name="android:textColorPrimary">#E6FFF8</item>
         <item name="android:textColorSecondary">#A8D1C7</item>
         <item name="home_gradient_drawable">@drawable/bg_home_gradient_forest</item>
@@ -74,7 +86,9 @@
         <item name="app_background_color">#1C1014</item>
         <item name="android:windowBackground">@drawable/bg_splash_screen_crimson</item>
         <item name="android:colorBackground">#1C1014</item>
-        <item name="colorAccent">#D86A7A</item>
+        <item name="colorAccent">#84384C</item>
+        <item name="colorControlActivated">#F08DA0</item>
+        <item name="colorControlNormal">#D6B2BA</item>
         <item name="android:textColorPrimary">#FFECEF</item>
         <item name="android:textColorSecondary">#D6B2BA</item>
         <item name="home_gradient_drawable">@drawable/bg_home_gradient_crimson</item>
@@ -88,6 +102,8 @@
         <item name="android:windowBackground">@drawable/bg_splash_screen_violet</item>
         <item name="android:colorBackground">#151523</item>
         <item name="colorAccent">#AFA3FF</item>
+        <item name="colorControlActivated">#C2B5FF</item>
+        <item name="colorControlNormal">#BFB9DD</item>
         <item name="android:textColorPrimary">#F1EEFF</item>
         <item name="android:textColorSecondary">#BFB9DD</item>
         <item name="home_gradient_drawable">@drawable/bg_home_gradient_violet</item>
@@ -101,6 +117,8 @@
         <item name="android:windowBackground">@drawable/bg_splash_screen_nord</item>
         <item name="android:colorBackground">#182029</item>
         <item name="colorAccent">#8ED0E8</item>
+        <item name="colorControlActivated">#A6E5F5</item>
+        <item name="colorControlNormal">#B1C9D6</item>
         <item name="android:textColorPrimary">#EAF7FD</item>
         <item name="android:textColorSecondary">#B1C9D6</item>
         <item name="home_gradient_drawable">@drawable/bg_home_gradient_nord</item>
@@ -113,7 +131,9 @@
         <item name="app_background_color">#11201B</item>
         <item name="android:windowBackground">@drawable/bg_splash_screen_emerald</item>
         <item name="android:colorBackground">#11201B</item>
-        <item name="colorAccent">#7ED6A3</item>
+        <item name="colorAccent">#337957</item>
+        <item name="colorControlActivated">#97E8B8</item>
+        <item name="colorControlNormal">#B6D0C0</item>
         <item name="android:textColorPrimary">#EDF9F2</item>
         <item name="android:textColorSecondary">#B6D0C0</item>
         <item name="home_gradient_drawable">@drawable/bg_home_gradient_emerald</item>
@@ -126,9 +146,11 @@
         <item name="app_background_color">#16161D</item>
         <item name="android:windowBackground">@drawable/bg_splash_screen_neon</item>
         <item name="android:colorBackground">#16161D</item>
-        <item name="colorAccent">#4DE0D7</item>
+        <item name="colorAccent">#866021</item>
+        <item name="colorControlActivated">#F4D477</item>
+        <item name="colorControlNormal">#DAD8B7</item>
         <item name="android:textColorPrimary">#F4F7FF</item>
-        <item name="android:textColorSecondary">#CFB7DA</item>
+        <item name="android:textColorSecondary">#DAD8B7</item>
         <item name="home_gradient_drawable">@drawable/bg_home_gradient_neon</item>
         <item name="movie_banner_gradient_drawable">@drawable/bg_movie_banner_gradient_neon</item>
         <item name="tv_show_banner_gradient_drawable">@drawable/bg_tv_show_banner_gradient_neon</item>
@@ -140,8 +162,8 @@
         <item name="app_background_color">#0F0B22</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
-        <item name="colorAccent">#7C5CFF</item>
-        <item name="colorControlActivated">#7C5CFF</item>
+        <item name="colorAccent">#49358F</item>
+        <item name="colorControlActivated">#A78BFA</item>
         <item name="colorControlNormal">#BFB9DD</item>
         <item name="android:windowBackground">@drawable/bg_splash_screen_violet</item>
         <item name="home_gradient_drawable">@drawable/bg_home_gradient_violet</item>
@@ -150,7 +172,7 @@
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_violet</item>
         <item name="defaultSearchIconColor">#F1EEFF</item>
         <item name="defaultSearchColor">#130E2A</item>
-        <item name="defaultSearchBrightColor">#241A52</item>
+        <item name="defaultSearchBrightColor">#332768</item>
         <item name="defaultBrandColor">#130E2A</item>
     </style>
 
@@ -161,8 +183,8 @@
         <item name="android:colorBackground">#000000</item>
         <item name="android:windowShowWallpaper">false</item>
         <item name="android:windowBackgroundFallback">#000000</item>
-        <item name="colorAccent">#FFFFFF</item>
-        <item name="colorControlActivated">#FFFFFF</item>
+        <item name="colorAccent">#555555</item>
+        <item name="colorControlActivated">#D4D4D4</item>
         <item name="colorControlNormal">#BDBDBD</item>
         <item name="android:textColorPrimary">#FFFFFF</item>
         <item name="android:textColorSecondary">#BDBDBD</item>
@@ -182,8 +204,8 @@
         <item name="app_background_color">#201410</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
-        <item name="colorAccent">#F39A5B</item>
-        <item name="colorControlActivated">#F39A5B</item>
+        <item name="colorAccent">#96542F</item>
+        <item name="colorControlActivated">#FFB879</item>
         <item name="colorControlNormal">#D7B7A4</item>
         <item name="android:textColorPrimary">#FFF0E5</item>
         <item name="android:textColorSecondary">#D7B7A4</item>
@@ -202,8 +224,8 @@
         <item name="app_background_color">#141C25</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
-        <item name="colorAccent">#7DB3E8</item>
-        <item name="colorControlActivated">#7DB3E8</item>
+        <item name="colorAccent">#35628E</item>
+        <item name="colorControlActivated">#91C9FF</item>
         <item name="colorControlNormal">#ADC5DA</item>
         <item name="android:textColorPrimary">#EAF4FF</item>
         <item name="android:textColorSecondary">#ADC5DA</item>
@@ -222,8 +244,8 @@
         <item name="app_background_color">#101816</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
-        <item name="colorAccent">#65D7C2</item>
-        <item name="colorControlActivated">#65D7C2</item>
+        <item name="colorAccent">#267D6E</item>
+        <item name="colorControlActivated">#7DE9D2</item>
         <item name="colorControlNormal">#A8D1C7</item>
         <item name="android:textColorPrimary">#E6FFF8</item>
         <item name="android:textColorSecondary">#A8D1C7</item>
@@ -242,8 +264,8 @@
         <item name="app_background_color">#1C1014</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
-        <item name="colorAccent">#D86A7A</item>
-        <item name="colorControlActivated">#D86A7A</item>
+        <item name="colorAccent">#84384C</item>
+        <item name="colorControlActivated">#F08DA0</item>
         <item name="colorControlNormal">#A88891</item>
         <item name="android:textColorPrimary">#FFECEF</item>
         <item name="android:textColorSecondary">#D6B2BA</item>
@@ -262,8 +284,8 @@
         <item name="app_background_color">#151523</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
-        <item name="colorAccent">#AFA3FF</item>
-        <item name="colorControlActivated">#AFA3FF</item>
+        <item name="colorAccent">#574A9D</item>
+        <item name="colorControlActivated">#C2B5FF</item>
         <item name="colorControlNormal">#8F8AAE</item>
         <item name="android:textColorPrimary">#F1EEFF</item>
         <item name="android:textColorSecondary">#BFB9DD</item>
@@ -282,11 +304,11 @@
         <item name="app_background_color">#182029</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
-        <item name="colorAccent">#8ED0E8</item>
-        <item name="colorControlActivated">#8ED0E8</item>
+        <item name="colorAccent">#376B83</item>
+        <item name="colorControlActivated">#A6E5F5</item>
         <item name="colorControlNormal">#8EA2B0</item>
         <item name="android:textColorPrimary">#EAF7FD</item>
-        <item name="android:textColorSecondary">#B1C9D6</item>
+        <item name="android:textColorSecondary">#B5BEF1</item>
         <item name="android:windowBackground">@drawable/bg_splash_screen_nord</item>
         <item name="defaultBrandColor">#18212A</item>
         <item name="defaultSearchColor">#18212A</item>
@@ -302,8 +324,8 @@
         <item name="app_background_color">#11201B</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
-        <item name="colorAccent">#7ED6A3</item>
-        <item name="colorControlActivated">#7ED6A3</item>
+        <item name="colorAccent">#337957</item>
+        <item name="colorControlActivated">#97E8B8</item>
         <item name="colorControlNormal">#98AE9F</item>
         <item name="android:textColorPrimary">#EDF9F2</item>
         <item name="android:textColorSecondary">#B6D0C0</item>
@@ -322,11 +344,11 @@
         <item name="app_background_color">#16161D</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
-        <item name="colorAccent">#4DE0D7</item>
-        <item name="colorControlActivated">#4DE0D7</item>
-        <item name="colorControlNormal">#A56FBD</item>
+        <item name="colorAccent">#866021</item>
+        <item name="colorControlActivated">#F4D477</item>
+        <item name="colorControlNormal">#BD8E6F</item>
         <item name="android:textColorPrimary">#F4F7FF</item>
-        <item name="android:textColorSecondary">#CFB7DA</item>
+        <item name="android:textColorSecondary">#DAD8B7</item>
         <item name="android:windowBackground">@drawable/bg_splash_screen_neon</item>
         <item name="defaultBrandColor">#18181E</item>
         <item name="defaultSearchColor">#18181E</item>

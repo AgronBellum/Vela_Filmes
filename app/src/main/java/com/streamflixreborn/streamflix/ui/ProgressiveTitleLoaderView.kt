@@ -119,7 +119,7 @@ class ProgressiveTitleLoaderView @JvmOverloads constructor(
         gravity = Gravity.CENTER
         setTextColor(Color.WHITE)
         textSize = 32f
-        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        typeface = Typeface.createFromAsset(context.assets,"fonts/BebasNeue-Regular.ttf")
         setShadowLayer(12f, 0f, 3f, Color.BLACK)
         alpha = alphaValue
         maxLines = 2
